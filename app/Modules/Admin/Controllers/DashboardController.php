@@ -11,10 +11,9 @@ use App\NewsMonitor\Models\Source;
 use App\NewsMonitor\Models\SourceItem;
 use App\NewsMonitor\Services\AgentSettings;
 use App\NewsMonitor\Support\NewsTables;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\View\View;
-use Throwable;
 
 final class DashboardController extends Controller
 {
@@ -22,53 +21,119 @@ final class DashboardController extends Controller
 
     public function __invoke(): View
     {
-        $today = now()->utc()->startOfDay();
+        $today = now()
+            ->timezone((string) config('app.display_timezone'))
+            ->startOfDay()
+            ->utc();
+
         $metrics = [
-            'Найдено URL' => SourceItem::query()->where('discovered_at', '>=', $today)->count(),
-            'Создано статей' => SourceItem::query()->where('created_at', '>=', $today)->count(),
-            'Успешно загружено' => SourceItem::query()->where('fetched_at', '>=', $today)->count(),
-            'Проанализировано' => SourceItem::query()->where('analyzed_at', '>=', $today)->count(),
-            'Отклонено' => SourceItem::query()->where('updated_at', '>=', $today)->whereIn('status', ['rejected_irrelevant', 'rejected_advertising', 'validation_failed'])->count(),
-            'Обнаружено дубликатов' => SourceItem::query()->where('updated_at', '>=', $today)->where('status', 'duplicate')->count(),
-            'Создано News Events' => DB::table(NewsTables::name('events'))->where('created_at', '>=', $today)->count(),
-            'Сгенерировано публикаций' => PublicationPost::query()->where('created_at', '>=', $today)->count(),
-            'Опубликовано' => PublicationPost::query()->where('ready_at', '>=', $today)->count(),
-            'Завершено с ошибкой' => ProcessingLog::query()->where('created_at', '>=', $today)->where('status', 'error')->count(),
-            'Ожидает обработки' => SourceItem::query()->whereIn('status', ['discovered', 'fetched', 'extracted'])->count(),
-            'Ожидает публикации' => SourceItem::query()->where('status', 'analyzed')->count(),
-            'Среднее время Pipeline' => round((float) ProcessingLog::query()->where('stage', 'pipeline')->whereNotNull('duration_ms')->avg('duration_ms') / 1000, 2).' с',
+            [
+                'label' => 'Источники',
+                'value' => Source::query()->count(),
+                'class' => 'info',
+                'icon' => 'bi-globe2',
+            ],
+            [
+                'label' => 'Найдено сегодня',
+                'value' => SourceItem::query()->where('discovered_at', '>=', $today)->count(),
+                'class' => 'primary',
+                'icon' => 'bi-search',
+            ],
+            [
+                'label' => 'На проверке',
+                'value' => SourceItem::query()
+                    ->whereIn('status', ['discovered', 'fetched', 'extracted', 'analyzed'])
+                    ->count(),
+                'class' => 'warning',
+                'icon' => 'bi-eye',
+            ],
+            [
+                'label' => 'Опубликовано сегодня',
+                'value' => PublicationPost::query()->where('ready_at', '>=', $today)->count(),
+                'class' => 'success',
+                'icon' => 'bi-check-lg',
+            ],
+            [
+                'label' => 'Отклонено сегодня',
+                'value' => SourceItem::query()
+                    ->where('updated_at', '>=', $today)
+                    ->whereIn('status', [
+                        'rejected_irrelevant',
+                        'rejected_advertising',
+                        'validation_failed',
+                        'duplicate',
+                    ])
+                    ->count(),
+                'class' => 'secondary',
+                'icon' => 'bi-ban',
+            ],
+            [
+                'label' => 'Ошибки',
+                'value' => ProcessingLog::query()
+                    ->where('started_at', '>=', $today)
+                    ->where('status', 'error')
+                    ->count(),
+                'class' => 'danger',
+                'icon' => 'bi-exclamation-triangle-fill',
+            ],
         ];
 
-        $status = ['label' => 'Работает', 'class' => 'success', 'reasons' => []];
-        try {
-            Redis::connection()->ping();
-        } catch (Throwable) {
-            $status = [
-                'label' => 'Критическая ошибка',
-                'class' => 'danger',
-                'reasons' => ['Redis недоступен: Pipeline не может обрабатывать очередь'],
-            ];
-        }
+        $events = $this->latestEvents();
+        $agent = [
+            'automatic_publication' => $this->settings->automaticPublication(),
+            'ai_tokens' => 0,
+            'estimated_cost' => 0.0,
+            'stages' => [
+                'discovery' => SourceItem::query()->where('status', 'discovered')->count(),
+                'fetching' => SourceItem::query()->where('status', 'fetched')->count(),
+                'analysis' => SourceItem::query()->where('status', 'extracted')->count(),
+                'deduplication' => SourceItem::query()->where('status', 'analyzed')->count(),
+                'publication' => PublicationPost::query()
+                    ->whereIn('status', ['ready', 'reserved'])
+                    ->count(),
+            ],
+        ];
 
-        if ($status['label'] !== 'Критическая ошибка' && ! $this->settings->collectionEnabled()) {
-            $status = ['label' => 'Сбор отключён', 'class' => 'warning', 'reasons' => ['Изменить состояние можно в настройках агента']];
-        } elseif ($status['label'] !== 'Критическая ошибка' && ! $this->settings->automaticPublication()) {
-            $status = ['label' => 'Публикация отключена', 'class' => 'secondary', 'reasons' => ['Автоматическое создание публикаций выключено']];
-        } elseif ($status['label'] !== 'Критическая ошибка') {
-            $sourceErrors = Source::query()->where('is_active', true)->where('status', 'error')->count();
-            $recentErrors = ProcessingLog::query()->where('created_at', '>=', now()->utc()->subHour())->where('status', 'error')->count();
-            if ($sourceErrors > 0 || $recentErrors > 0) {
-                $status = [
-                    'label' => 'Предупреждение',
-                    'class' => 'warning',
-                    'reasons' => array_filter([
-                        $sourceErrors > 0 ? "Недоступных источников: {$sourceErrors}" : null,
-                        $recentErrors > 0 ? "Ошибок за час: {$recentErrors}" : null,
-                    ]),
-                ];
-            }
-        }
+        return view('admin.dashboard', compact('metrics', 'events', 'agent'));
+    }
 
-        return view('admin.dashboard', compact('metrics', 'status'));
+    private function latestEvents(): Collection
+    {
+        $events = NewsTables::name('events');
+        $eventItems = NewsTables::name('event_items');
+        $sourceItems = NewsTables::name('source_items');
+        $sources = NewsTables::name('sources');
+
+        return DB::table("{$events} as events")
+            ->leftJoin(
+                "{$eventItems} as event_items",
+                'event_items.news_event_id',
+                '=',
+                'events.id',
+            )
+            ->leftJoin(
+                "{$sourceItems} as source_items",
+                'source_items.id',
+                '=',
+                'event_items.source_item_id',
+            )
+            ->leftJoin(
+                "{$sources} as sources",
+                'sources.id',
+                '=',
+                'source_items.source_id',
+            )
+            ->select([
+                'events.id',
+                'events.title',
+                'events.event_at',
+                'events.created_at',
+                DB::raw('MIN(sources.name) as source_name'),
+                DB::raw('COUNT(event_items.source_item_id) as items_count'),
+            ])
+            ->groupBy('events.id', 'events.title', 'events.event_at', 'events.created_at')
+            ->orderByRaw('COALESCE(events.event_at, events.created_at) DESC')
+            ->limit(10)
+            ->get();
     }
 }

@@ -40,7 +40,7 @@
         <div class="sidebar-wrapper">
             <nav class="mt-2">
                 <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu">
-                    <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.dashboard')) active @endif" href="{{ route('admin.dashboard') }}"><i class="nav-icon bi bi-speedometer2"></i><p>Dashboard</p></a></li>
+                    <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.dashboard')) active @endif" href="{{ route('admin.dashboard') }}"><i class="nav-icon bi bi-speedometer2"></i><p>Обзор</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.categories.*')) active @endif" href="{{ route('admin.categories.index') }}"><i class="nav-icon bi bi-tags"></i><p>Тематики</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.sources.*')) active @endif" href="{{ route('admin.sources.index') }}"><i class="nav-icon bi bi-rss"></i><p>Источники</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.items.*')) active @endif" href="{{ route('admin.items.index') }}"><i class="nav-icon bi bi-newspaper"></i><p>Материалы</p></a></li>
