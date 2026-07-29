@@ -144,7 +144,7 @@ final class NewsPipeline
                 ],
             );
             $item->update(['status' => 'analyzed', 'analyzed_at' => now()->utc()]);
-            $this->log($item, $correlationId, 'analyze', 'success', $analysisStarted, $analysis->reason);
+            $this->log($item, $correlationId, 'analyze', 'success', $analysisStarted, 'analysis_complete');
 
             if ($analysis->isAdvertising && $analysis->adConfidence >= (float) config('news.ad_confidence_threshold')) {
                 return $this->reject($item, $correlationId, 'rejected_advertising', 'advertising_detected');
