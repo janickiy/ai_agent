@@ -179,6 +179,82 @@ final class AdminDataTableTest extends TestCase
         );
     }
 
+    public function test_item_and_post_tables_show_database_timestamps(): void
+    {
+        $this->seed();
+        $administrator = $this->administrator('timestamps@example.test');
+        $source = Source::query()->firstOrFail();
+        $category = $source->categories()->firstOrFail();
+        $createdAt = now()->utc()->setDate(2026, 7, 20)->setTime(7, 15);
+        $updatedAt = $createdAt->copy()->setTime(9, 45);
+
+        $item = SourceItem::query()->create([
+            'source_id' => $source->id,
+            'discovery_url' => 'https://example.test/timestamp-material',
+            'canonical_url' => 'https://example.test/timestamp-material',
+            'canonical_url_hash' => hash('sha256', 'https://example.test/timestamp-material'),
+            'title_original' => 'Материал с датами',
+            'status' => 'accepted',
+            'source_published_at' => $createdAt->copy()->subDay(),
+            'discovered_at' => $createdAt,
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+        ]);
+        $post = PublicationPost::query()->create([
+            'source_item_id' => $item->id,
+            'idempotency_key' => 'timestamp-post',
+            'source_url' => $item->canonical_url,
+            'source_name' => $source->name,
+            'source_published_at' => $item->source_published_at,
+            'title_original' => 'Пост с датами',
+            'description_original' => 'Описание.',
+            'read_more_label' => 'Читать в источнике',
+            'category_id' => $category->id,
+            'hashtags' => [],
+            'content_hash' => hash('sha256', 'timestamp-post'),
+            'status' => 'ready',
+            'validation_meta' => [],
+            'ready_at' => $updatedAt,
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+        ]);
+        $expectedCreatedAt = $createdAt
+            ->timezone((string) config('app.display_timezone'))
+            ->format('d.m.Y H:i');
+        $expectedUpdatedAt = $updatedAt
+            ->timezone((string) config('app.display_timezone'))
+            ->format('d.m.Y H:i');
+
+        $this->actingAs($administrator)
+            ->get(route('admin.items.index'))
+            ->assertOk()
+            ->assertSeeText('Дата публикации')
+            ->assertSeeText('Добавлено')
+            ->assertSeeText('Обновлено');
+        $this->actingAs($administrator)
+            ->get(route('admin.posts.index'))
+            ->assertOk()
+            ->assertSeeText('Добавлено')
+            ->assertSeeText('Обновлено');
+
+        $this->actingAs($administrator)
+            ->getJson(route('admin.datatables.items', $this->dataTableQuery([
+                ['data' => 'created_at', 'name' => $item->getTable().'.created_at'],
+                ['data' => 'updated_at', 'name' => $item->getTable().'.updated_at'],
+            ])))
+            ->assertOk()
+            ->assertJsonPath('data.0.created_at', $expectedCreatedAt)
+            ->assertJsonPath('data.0.updated_at', $expectedUpdatedAt);
+        $this->actingAs($administrator)
+            ->getJson(route('admin.datatables.posts', $this->dataTableQuery([
+                ['data' => 'created_at', 'name' => $post->getTable().'.created_at'],
+                ['data' => 'updated_at', 'name' => $post->getTable().'.updated_at'],
+            ])))
+            ->assertOk()
+            ->assertJsonPath('data.0.created_at', $expectedCreatedAt)
+            ->assertJsonPath('data.0.updated_at', $expectedUpdatedAt);
+    }
+
     public function test_datatable_pagination_and_sorting_are_applied_on_the_server(): void
     {
         $this->administrator('middle@example.test');

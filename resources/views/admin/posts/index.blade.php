@@ -15,6 +15,8 @@
                     <th>Категория</th>
                     <th>Хэштеги</th>
                     <th>Статус</th>
+                    <th>Добавлено</th>
+                    <th>Обновлено</th>
                 </tr>
             </thead>
         </table>
@@ -77,6 +79,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         : data;
                 },
             },
+            {data: 'created_at', name: @js($postsTable.'.created_at')},
+            {data: 'updated_at', name: @js($postsTable.'.updated_at')},
         ],
     });
 });

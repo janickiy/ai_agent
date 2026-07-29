@@ -23,7 +23,9 @@
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Дата</th>
+                    <th>Дата публикации</th>
+                    <th>Добавлено</th>
+                    <th>Обновлено</th>
                     <th>Источник</th>
                     <th>Заголовок</th>
                     <th>Категория</th>
@@ -54,6 +56,8 @@ document.addEventListener('DOMContentLoaded', function () {
         columns: [
             {data: 'id', name: @js($itemsTable.'.id')},
             {data: 'source_published_at', name: @js($itemsTable.'.source_published_at')},
+            {data: 'created_at', name: @js($itemsTable.'.created_at')},
+            {data: 'updated_at', name: @js($itemsTable.'.updated_at')},
             {data: 'source_name', name: 'source_table.name'},
             {
                 data: 'title_original',

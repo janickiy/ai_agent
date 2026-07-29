@@ -130,6 +130,7 @@ final class DataTableController extends Controller
                 'source_published_at',
                 fn (SourceItem $item): string => $this->date($item->source_published_at),
             )
+
             ->addColumn(
                 'status_class',
                 static fn (SourceItem $item): string => self::ITEM_STATUS_CLASSES[$item->status] ?? 'secondary',
@@ -140,6 +141,14 @@ final class DataTableController extends Controller
                     'admin.datatables.item-actions',
                     compact('item'),
                 )->render(),
+            )
+            ->editColumn(
+                'created_at',
+                fn (SourceItem $item): string => $this->date($item->created_at),
+            )
+            ->editColumn(
+                'updated_at',
+                fn (SourceItem $item): string => $this->date($item->updated_at),
             )
             ->rawColumns(['actions'])
             ->toJson();
@@ -169,6 +178,14 @@ final class DataTableController extends Controller
             ->editColumn(
                 'source_published_at',
                 fn (PublicationPost $post): string => $this->date($post->source_published_at),
+            )
+            ->editColumn(
+                'created_at',
+                fn (PublicationPost $post): string => $this->date($post->created_at),
+            )
+            ->editColumn(
+                'updated_at',
+                fn (PublicationPost $post): string => $this->date($post->updated_at),
             )
             ->editColumn(
                 'hashtags',
