@@ -21,7 +21,7 @@
         .category-value { overflow-wrap: anywhere; }
         div.dt-container div.dt-layout-row { margin: 0; padding: 1rem; }
         div.dt-container div.dt-layout-row.dt-layout-table { padding: 0; }
-        div.dt-container div.dt-layout-row:last-child { padding-bottom: 1.5rem; }
+        div.dt-container div.dt-layout-row:last-child { padding-bottom: 5px; }
         div.dt-container div.dt-layout-row:first-child {
             align-items: center;
             min-height: 72px;
