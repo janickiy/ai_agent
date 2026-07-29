@@ -1,5 +1,5 @@
 @can('manage-categories')
-<div class="d-flex flex-nowrap align-items-center gap-2" role="group" aria-label="Действия с тематикой {{ $category->name }}">
+<div class="d-flex flex-nowrap align-items-center justify-content-center gap-2" role="group" aria-label="Действия с тематикой {{ $category->name }}">
     <a class="btn btn-sm btn-outline-primary rounded" href="{{ route('admin.categories.edit', $category) }}" title="Редактировать">
         <i class="bi bi-pencil"></i><span class="visually-hidden">Редактировать</span>
     </a>

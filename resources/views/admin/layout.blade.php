@@ -117,6 +117,25 @@
                 <li class="nav-item d-none d-md-block"><span class="nav-link">ИИ-агент отраслевых новостей</span></li>
             </ul>
             <ul class="navbar-nav ms-auto">
+                @can('operate-pipeline')
+                @php($parserEnabled = app(\App\NewsMonitor\Services\AgentSettings::class)->collectionEnabled())
+                <li class="nav-item d-flex align-items-center gap-1">
+                    <form method="post" action="{{ route('admin.parser.start') }}">
+                        @csrf
+                        <button class="btn btn-outline-success btn-sm" type="submit" title="Включить сбор и запустить проверку источников">
+                            <i class="bi bi-play-fill" aria-hidden="true"></i>
+                            <span class="d-none d-xl-inline">Запустить парсер</span>
+                        </button>
+                    </form>
+                    <form method="post" action="{{ route('admin.parser.stop') }}">
+                        @csrf
+                        <button class="btn btn-outline-warning btn-sm" type="submit" title="Остановить новые циклы сбора" @disabled(! $parserEnabled)>
+                            <i class="bi bi-stop-fill" aria-hidden="true"></i>
+                            <span class="d-none d-xl-inline">Остановить парсер</span>
+                        </button>
+                    </form>
+                </li>
+                @endcan
                 @can('purge-content')
                 <li class="nav-item d-flex align-items-center">
                     <form method="post" action="{{ route('admin.data.destroy') }}" onsubmit="return confirm('Очистить все исходные публикации, готовые посты и журнал? Это действие нельзя отменить.')">

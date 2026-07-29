@@ -40,7 +40,7 @@
                         <th>Ключевые слова</th>
                         <th class="text-center">Источников</th>
                         <th>Статус</th>
-                        <th>Действия</th>
+                        <th class="text-center">Действия</th>
                     </tr>
                 </thead>
             </table>
@@ -72,6 +72,16 @@
     .categories-card .category-table th:nth-child(4) { width: 12%; }
     .categories-card .category-table th:nth-child(5) { width: 14%; }
     .categories-card .category-table th:nth-child(6) { width: 11%; }
+    .categories-card .category-table th:last-child,
+    .categories-card .category-table td:last-child {
+        padding-right: .85rem !important;
+    }
+    .categories-card div.dt-container > .row:last-child {
+        padding-bottom: 5px;
+    }
+    .categories-card div.dt-container > .row:last-child .pagination {
+        margin-bottom: 0;
+    }
     .category-icon {
         align-items: center;
         background: var(--bs-primary-bg-subtle);
@@ -172,7 +182,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         + (data ? 'Активна' : 'Неактивна') + '</span>';
                 },
             },
-            {data: 'actions', name: 'actions', orderable: false, searchable: false},
+            {
+                data: 'actions',
+                name: 'actions',
+                orderable: false,
+                searchable: false,
+                className: 'text-center',
+            },
         ],
     });
 });

@@ -7,6 +7,7 @@ use App\Modules\Admin\Controllers\DashboardController;
 use App\Modules\Admin\Controllers\DataCleanupController;
 use App\Modules\Admin\Controllers\DataTableController;
 use App\Modules\Admin\Controllers\NewsItemController;
+use App\Modules\Admin\Controllers\ParserControlController;
 use App\Modules\Admin\Controllers\ProcessingLogController;
 use App\Modules\Admin\Controllers\PublicationController;
 use App\Modules\Admin\Controllers\SettingsController;
@@ -53,5 +54,7 @@ Route::prefix('admin')
         Route::get('/logs', ProcessingLogController::class)->name('logs.index');
         Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+        Route::post('/parser/start', [ParserControlController::class, 'start'])->name('parser.start');
+        Route::post('/parser/stop', [ParserControlController::class, 'stop'])->name('parser.stop');
         Route::delete('/data', DataCleanupController::class)->name('data.destroy');
     });
