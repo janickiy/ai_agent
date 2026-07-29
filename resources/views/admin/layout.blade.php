@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.8/css/dataTables.bootstrap5.min.css">
+    @stack('styles')
     <style>
         .app-sidebar { --lte-sidebar-width: 260px; }
         .brand-text { font-weight: 700; }
@@ -17,6 +19,89 @@
         .category-table { min-width: 900px; table-layout: fixed; }
         .category-keywords { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .category-value { overflow-wrap: anywhere; }
+        div.dt-container div.dt-layout-row { margin: 0; padding: 1rem; }
+        div.dt-container div.dt-layout-row.dt-layout-table { padding: 0; }
+        div.dt-container div.dt-layout-row:first-child {
+            align-items: center;
+            min-height: 72px;
+        }
+        div.dt-container .dt-length label,
+        div.dt-container .dt-search {
+            align-items: center;
+            display: flex;
+            font-size: 1rem;
+            gap: .55rem;
+            margin: 0;
+        }
+        div.dt-container .dt-length select {
+            min-width: 72px;
+            order: 0;
+        }
+        div.dt-container .dt-search {
+            justify-content: flex-end;
+        }
+        div.dt-container .dt-search::before {
+            color: var(--bs-body-color);
+            content: "\F52A";
+            font-family: "bootstrap-icons";
+            font-size: 1.45rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        div.dt-container .dt-search label {
+            display: none;
+        }
+        div.dt-container .dt-search input {
+            margin: 0;
+            min-height: 40px;
+            min-width: 220px;
+        }
+        div.dt-container .dt-info {
+            font-size: 1rem;
+        }
+        div.dt-container .pagination {
+            margin: 0;
+        }
+        div.dt-container .page-link {
+            min-width: 42px;
+            padding: .55rem .8rem;
+            text-align: center;
+        }
+        table.dataTable {
+            border-collapse: collapse !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        table.dataTable > thead > tr > th {
+            background: var(--bs-body-bg);
+            border-bottom-width: 2px;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 1rem .85rem;
+            white-space: nowrap;
+        }
+        table.dataTable > tbody > tr > td {
+            padding: .85rem;
+        }
+        table.dataTable.table-striped > tbody > tr:nth-of-type(odd) > * {
+            --bs-table-bg-type: rgba(var(--bs-secondary-bg-rgb), .72);
+        }
+        table.dataTable .btn-sm {
+            min-height: 34px;
+            min-width: 34px;
+        }
+        @media (max-width: 767.98px) {
+            div.dt-container div.dt-layout-row:first-child {
+                gap: .75rem;
+            }
+            div.dt-container .dt-search {
+                justify-content: flex-start;
+            }
+            div.dt-container .dt-search input {
+                min-width: 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
@@ -70,5 +155,10 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0/dist/js/adminlte.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/2.3.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="{{ asset('js/admin-datatables.js') }}"></script>
+@stack('scripts')
 </body>
 </html>

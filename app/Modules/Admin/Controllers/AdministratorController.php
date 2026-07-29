@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Admin\Requests\AdministratorRequest;
 use App\NewsMonitor\Models\AuditLog;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -18,24 +17,11 @@ use Illuminate\View\View;
 
 final class AdministratorController extends Controller
 {
-    public function index(Request $request): View
+    public function index(): View
     {
         Gate::authorize('manage-administrators');
-        $search = trim((string) $request->query('search'));
 
-        return view('admin.administrators.index', [
-            'administrators' => User::query()
-                ->where('role', 'administrator')
-                ->when($search !== '', static fn (Builder $query) => $query->where(
-                    static fn (Builder $filter) => $filter
-                        ->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%"),
-                ))
-                ->orderBy('id')
-                ->paginate(30)
-                ->withQueryString(),
-            'search' => $search,
-        ]);
+        return view('admin.administrators.index');
     }
 
     public function create(): View

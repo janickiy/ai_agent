@@ -4,6 +4,7 @@ use App\Modules\Admin\Controllers\AdministratorController;
 use App\Modules\Admin\Controllers\AuthController;
 use App\Modules\Admin\Controllers\CategoryController;
 use App\Modules\Admin\Controllers\DashboardController;
+use App\Modules\Admin\Controllers\DataTableController;
 use App\Modules\Admin\Controllers\NewsItemController;
 use App\Modules\Admin\Controllers\ProcessingLogController;
 use App\Modules\Admin\Controllers\PublicationController;
@@ -25,6 +26,17 @@ Route::prefix('admin')
     ->middleware(['auth', 'active_user', 'admin_access'])
     ->group(function (): void {
         Route::get('/', DashboardController::class)->name('dashboard');
+        Route::prefix('datatables')
+            ->name('datatables.')
+            ->controller(DataTableController::class)
+            ->group(function (): void {
+                Route::get('/categories', 'categories')->name('categories');
+                Route::get('/sources', 'sources')->name('sources');
+                Route::get('/items', 'items')->name('items');
+                Route::get('/posts', 'posts')->name('posts');
+                Route::get('/logs', 'logs')->name('logs');
+                Route::get('/administrators', 'administrators')->name('administrators');
+            });
         Route::resource('administrators', AdministratorController::class)->except('show');
         Route::resource('categories', CategoryController::class)->except('show');
         Route::get('/sources', [SourceController::class, 'index'])->name('sources.index');

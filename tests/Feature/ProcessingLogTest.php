@@ -30,15 +30,18 @@ final class ProcessingLogTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.logs.index'))
             ->assertOk()
-            ->assertSee('Журнал и ошибки')
+            ->assertSee('Журнал и ошибки');
+
+        $this->actingAs($user)
+            ->getJson(route('admin.datatables.logs'))
+            ->assertOk()
             ->assertSee('Connection timeout after 20 seconds')
             ->assertSee('analysis_complete');
 
         $this->actingAs($user)
-            ->get(route('admin.logs.index', [
+            ->getJson(route('admin.datatables.logs', [
                 'stage' => 'fetch',
                 'status' => 'error',
-                'search' => 'fetch_timeout',
             ]))
             ->assertOk()
             ->assertSee('Connection timeout after 20 seconds')

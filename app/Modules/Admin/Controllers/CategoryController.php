@@ -19,13 +19,7 @@ final class CategoryController extends Controller
 {
     public function index(): View
     {
-        return view('admin.categories.index', [
-            'categories' => NewsCategory::query()
-                ->withCount('sources')
-                ->orderBy('id')
-                ->paginate(30)
-                ->withQueryString(),
-        ]);
+        return view('admin.categories.index');
     }
 
     public function create(): View

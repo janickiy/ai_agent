@@ -19,16 +19,7 @@ final class SourceController extends Controller
 {
     public function index(): View
     {
-        return view('admin.sources.index', [
-            'sources' => Source::query()
-                ->with('categories')
-                ->withCount('items')
-                ->orderBy('id')
-                ->paginate(30)
-                ->withQueryString(),
-            'categories' => NewsCategory::query()->where('is_active', true)->orderBy('id')->get(),
-            'sourceClasses' => config('news_sources.classes', []),
-        ]);
+        return view('admin.sources.index');
     }
 
     public function create(): View

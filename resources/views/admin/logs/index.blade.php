@@ -3,6 +3,7 @@
 @section('title', 'Журнал и ошибки')
 
 @section('content')
+@php($logsTable = \App\NewsMonitor\Support\NewsTables::name('processing_logs'))
 <div class="row g-3 mb-3">
     @foreach([
         ['label' => 'Событий сегодня', 'value' => $summary['total'], 'class' => 'primary'],
@@ -23,54 +24,41 @@
 
 <div class="card">
     <div class="card-header">
-        <form method="get" action="{{ route('admin.logs.index') }}" class="row g-2 align-items-end">
+        <form class="row g-2 align-items-end" id="logs-filter">
             <div class="col-xl-2 col-md-4">
                 <label class="form-label" for="log-stage">Этап</label>
-                <select class="form-select" id="log-stage" name="stage">
+                <select class="form-select" id="log-stage">
                     <option value="">Все этапы</option>
                     @foreach($stages as $value => $label)
-                    <option value="{{ $value }}" @selected(request('stage') === $value)>{{ $label }}</option>
+                    <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-xl-2 col-md-4">
                 <label class="form-label" for="log-status">Статус</label>
-                <select class="form-select" id="log-status" name="status">
+                <select class="form-select" id="log-status">
                     <option value="">Все статусы</option>
                     @foreach($statuses as $value => $status)
-                    <option value="{{ $value }}" @selected(request('status') === $value)>{{ $status['label'] }}</option>
+                    <option value="{{ $value }}">{{ $status['label'] }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-xl-2 col-md-4">
                 <label class="form-label" for="log-date-from">С даты</label>
-                <input class="form-control" type="date" id="log-date-from" name="date_from" value="{{ request('date_from') }}">
+                <input class="form-control" type="date" id="log-date-from">
             </div>
             <div class="col-xl-2 col-md-4">
                 <label class="form-label" for="log-date-to">По дату</label>
-                <input class="form-control" type="date" id="log-date-to" name="date_to" value="{{ request('date_to') }}">
+                <input class="form-control" type="date" id="log-date-to">
             </div>
-            <div class="col-xl-3 col-md-6">
-                <label class="form-label" for="log-search">Поиск</label>
-                <input class="form-control" type="search" id="log-search" name="search" value="{{ request('search') }}" placeholder="Причина, ошибка или correlation ID">
-            </div>
-            <div class="col-xl-1 col-md-2 d-flex gap-1">
-                <button class="btn btn-primary" type="submit" title="Применить"><i class="bi bi-funnel"></i><span class="visually-hidden">Применить</span></button>
-                <a class="btn btn-outline-secondary" href="{{ route('admin.logs.index') }}" title="Сбросить"><i class="bi bi-x-lg"></i><span class="visually-hidden">Сбросить</span></a>
+            <div class="col-xl-2 col-md-4 d-flex gap-1">
+                <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Применить</button>
+                <button class="btn btn-outline-secondary" id="logs-filter-reset" type="button" title="Сбросить"><i class="bi bi-x-lg"></i></button>
             </div>
         </form>
     </div>
     <div class="card-body table-responsive p-0">
-        <table class="table table-striped mb-0" style="min-width: 950px; table-layout: fixed">
-            <colgroup>
-                <col style="width: 150px">
-                <col style="width: 95px">
-                <col style="width: 90px">
-                <col style="width: 190px">
-                <col style="width: 225px">
-                <col style="width: 115px">
-                <col style="width: 85px">
-            </colgroup>
+        <table class="table table-striped mb-0" id="logs-table">
             <thead>
                 <tr>
                     <th>Время</th>
@@ -82,42 +70,111 @@
                     <th>Попытка</th>
                 </tr>
             </thead>
-            <tbody>
-            @forelse($logs as $log)
-                @php($status = $statuses[$log->status] ?? ['label' => $log->status, 'class' => 'secondary'])
-                <tr>
-                    <td class="text-nowrap">{{ $log->started_at?->timezone(config('app.display_timezone'))->format('d.m.Y H:i:s') }}</td>
-                    <td>
-                        <strong>{{ $stages[$log->stage] ?? $log->stage }}</strong>
-                        @if(data_get($log->context, 'ai_provider'))<br><small class="text-secondary">AI: {{ data_get($log->context, 'ai_provider') }}</small>@endif
-                    </td>
-                    <td><span class="badge text-bg-{{ $status['class'] }}">{{ $status['label'] }}</span></td>
-                    <td>
-                        {{ $log->source?->name ?? ($log->source_id ? 'Источник #'.$log->source_id : '—') }}
-                        @if($log->source_item_id)
-                        <br><small title="{{ $log->sourceItem?->title_original }}">Материал #{{ $log->source_item_id }}@if($log->sourceItem?->title_original): {{ \Illuminate\Support\Str::limit($log->sourceItem->title_original, 55) }}@endif</small>
-                        @endif
-                    </td>
-                    <td class="source-link">
-                        @if($log->error_message)
-                        <span class="text-danger" title="{{ $log->error_message }}">{{ \Illuminate\Support\Str::limit($log->error_message, 120) }}</span>
-                        @elseif($log->reason_code)
-                        {{ $log->reason_code }}
-                        @else
-                        <span class="text-secondary">—</span>
-                        @endif
-                        @if($log->error_message && $log->reason_code)<br><small>{{ $log->reason_code }}</small>@endif
-                        <br><small class="text-secondary" title="{{ $log->correlation_id }}">{{ \Illuminate\Support\Str::limit($log->correlation_id, 14) }}</small>
-                    </td>
-                    <td class="text-nowrap">{{ $log->duration_ms === null ? '—' : number_format($log->duration_ms, 0, ',', ' ').' мс' }}</td>
-                    <td>{{ $log->attempt }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="7" class="text-center py-4">Записей по выбранным условиям нет.</td></tr>
-            @endforelse
-            </tbody>
         </table>
     </div>
-    @if($logs->hasPages())<div class="card-footer">{{ $logs->links() }}</div>@endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const escape = window.AdminDataTables.escapeHtml;
+    const filters = {
+        stage: document.getElementById('log-stage'),
+        status: document.getElementById('log-status'),
+        dateFrom: document.getElementById('log-date-from'),
+        dateTo: document.getElementById('log-date-to'),
+    };
+    const table = window.AdminDataTables.create('#logs-table', {
+        ajax: {
+            url: @js(route('admin.datatables.logs')),
+            data: function (request) {
+                request.stage = filters.stage.value;
+                request.status = filters.status.value;
+                request.date_from = filters.dateFrom.value;
+                request.date_to = filters.dateTo.value;
+            },
+        },
+        order: [[0, 'desc']],
+        scrollX: true,
+        columns: [
+            {data: 'started_at', name: @js($logsTable.'.started_at')},
+            {
+                data: 'stage_label',
+                name: @js($logsTable.'.stage'),
+                render: function (data, type, row) {
+                    return type === 'display'
+                        ? '<strong>' + escape(data) + '</strong>' + (row.ai_provider ? '<br><small class="text-secondary">AI: ' + escape(row.ai_provider) + '</small>' : '')
+                        : data;
+                },
+            },
+            {
+                data: 'status_label',
+                name: @js($logsTable.'.status'),
+                render: function (data, type, row) {
+                    return type === 'display'
+                        ? '<span class="badge text-bg-' + escape(row.status_class) + '">' + escape(data) + '</span>'
+                        : data;
+                },
+            },
+            {
+                data: 'source_name',
+                name: 'source_name',
+                defaultContent: '—',
+                render: function (data, type, row) {
+                    if (type !== 'display') {
+                        return data || '';
+                    }
+
+                    const source = data || (row.source_id ? 'Источник #' + row.source_id : '—');
+                    const item = row.source_item_id
+                        ? '<br><small>Материал #' + escape(row.source_item_id) + (row.source_item_title ? ': ' + escape(row.source_item_title) : '') + '</small>'
+                        : '';
+
+                    return escape(source) + item;
+                },
+            },
+            {
+                data: 'error_message',
+                name: 'error_message',
+                defaultContent: '—',
+                render: function (data, type, row) {
+                    if (type !== 'display') {
+                        return data || row.reason_code || '';
+                    }
+
+                    const result = data
+                        ? '<span class="text-danger">' + escape(data) + '</span>'
+                        : escape(row.reason_code || '—');
+                    const reason = data && row.reason_code ? '<br><small>' + escape(row.reason_code) + '</small>' : '';
+
+                    return result + reason + '<br><small class="text-secondary">' + escape(row.correlation_id) + '</small>';
+                },
+            },
+            {
+                data: 'duration_ms',
+                name: @js($logsTable.'.duration_ms'),
+                render: function (data, type) {
+                    return type === 'display' && data !== null
+                        ? new Intl.NumberFormat('ru-RU').format(data) + ' мс'
+                        : (data === null ? '—' : data);
+                },
+            },
+            {data: 'attempt', name: @js($logsTable.'.attempt')},
+        ],
+    });
+
+    document.getElementById('logs-filter').addEventListener('submit', function (event) {
+        event.preventDefault();
+        table.ajax.reload();
+    });
+
+    document.getElementById('logs-filter-reset').addEventListener('click', function () {
+        Object.values(filters).forEach(function (field) {
+            field.value = '';
+        });
+        table.ajax.reload();
+    });
+});
+</script>
+@endpush

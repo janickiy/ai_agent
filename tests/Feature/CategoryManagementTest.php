@@ -26,8 +26,12 @@ final class CategoryManagementTest extends TestCase
             ->get(route('admin.categories.index'))
             ->assertOk()
             ->assertSee('Список тематик')
-            ->assertSee('Строительство')
             ->assertSee(route('admin.categories.create'));
+
+        $this->actingAs($administrator)
+            ->getJson(route('admin.datatables.categories'))
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'Строительство']);
 
         $this->actingAs($administrator)
             ->post(route('admin.categories.store'), [

@@ -3,23 +3,102 @@
 @section('title', 'Исходные публикации')
 
 @section('content')
-<form class="row g-2 mb-3">
-    <div class="col-auto"><select class="form-select" name="status"><option value="">Все статусы</option>@foreach(['discovered','fetched','extracted','analyzed','rejected_irrelevant','rejected_advertising','duplicate','validation_failed','accepted'] as $status)<option @selected(request('status') === $status)>{{ $status }}</option>@endforeach</select></div>
-    <div class="col-auto"><button class="btn btn-outline-primary">Применить</button></div>
+@php($itemsTable = \App\NewsMonitor\Support\NewsTables::name('source_items'))
+<form class="row g-2 mb-3" id="items-filter">
+    <div class="col-auto">
+        <label class="visually-hidden" for="item-status">Статус</label>
+        <select class="form-select" id="item-status">
+            <option value="">Все статусы</option>
+            @foreach(['discovered','fetched','extracted','analyzed','rejected_irrelevant','rejected_advertising','duplicate','validation_failed','accepted'] as $status)
+            <option value="{{ $status }}">{{ $status }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Применить</button></div>
 </form>
-<div class="card"><div class="card-body table-responsive p-0">
-    <table class="table table-striped mb-0"><thead><tr><th>ID</th><th>Дата</th><th>Источник</th><th>Заголовок</th><th>Категория</th><th>Статус / причина</th><th></th></tr></thead><tbody>
-    @forelse($items as $item)
-    <tr>
-        <td>{{ $item->id }}</td>
-        <td>{{ $item->source_published_at?->timezone(config('app.display_timezone'))->format('d.m.Y H:i') ?? '—' }}</td>
-        <td>{{ $item->source->name }}</td>
-        <td><a href="{{ $item->canonical_url }}" target="_blank" rel="noopener noreferrer">{{ \Illuminate\Support\Str::limit($item->title_original ?: $item->canonical_url, 90) }}</a></td>
-        <td>{{ $item->analysis?->category?->name ?? '—' }} @if($item->analysis)<small>({{ number_format($item->analysis->category_confidence, 2) }})</small>@endif</td>
-        <td><span class="badge text-bg-secondary">{{ $item->status }}</span><br><small>{{ $item->rejection_reason }}</small></td>
-        <td>@can('operate-pipeline')<form method="post" action="{{ route('admin.items.retry', $item) }}">@csrf<button class="btn btn-sm btn-outline-primary">Повторить</button></form>@endcan</td>
-    </tr>
-    @empty<tr><td colspan="7" class="text-center py-4">Материалов пока нет.</td></tr>@endforelse
-    </tbody></table>
-</div>@if($items->hasPages())<div class="card-footer">{{ $items->links() }}</div>@endif</div>
+
+<div class="card">
+    <div class="card-body table-responsive p-0">
+        <table class="table table-striped mb-0" id="items-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Дата</th>
+                    <th>Источник</th>
+                    <th>Заголовок</th>
+                    <th>Категория</th>
+                    <th>Статус / причина</th>
+                    <th></th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const escape = window.AdminDataTables.escapeHtml;
+    const safeUrl = window.AdminDataTables.safeUrl;
+    const status = document.getElementById('item-status');
+    const table = window.AdminDataTables.create('#items-table', {
+        ajax: {
+            url: @js(route('admin.datatables.items')),
+            data: function (request) {
+                request.status = status.value;
+            },
+        },
+        order: [[1, 'desc']],
+        scrollX: true,
+        columns: [
+            {data: 'id', name: @js($itemsTable.'.id')},
+            {data: 'source_published_at', name: @js($itemsTable.'.source_published_at')},
+            {data: 'source_name', name: 'source_table.name'},
+            {
+                data: 'title_original',
+                name: 'title_original',
+                render: function (data, type, row) {
+                    const title = data || row.canonical_url;
+
+                    return type === 'display'
+                        ? '<a href="' + escape(safeUrl(row.canonical_url)) + '" target="_blank" rel="noopener noreferrer">' + escape(title) + '</a>'
+                        : title;
+                },
+            },
+            {
+                data: 'category_name',
+                name: 'category_table.name',
+                defaultContent: '—',
+                render: function (data, type, row) {
+                    if (type !== 'display') {
+                        return data || '';
+                    }
+
+                    const confidence = row.category_confidence === null
+                        ? ''
+                        : ' <small>(' + Number(row.category_confidence).toFixed(2) + ')</small>';
+
+                    return escape(data || '—') + confidence;
+                },
+            },
+            {
+                data: 'status',
+                name: @js($itemsTable.'.status'),
+                render: function (data, type, row) {
+                    return type === 'display'
+                        ? '<span class="badge text-bg-secondary">' + escape(data) + '</span><br><small>' + escape(row.rejection_reason || '') + '</small>'
+                        : data;
+                },
+            },
+            {data: 'actions', name: 'actions', orderable: false, searchable: false},
+        ],
+    });
+
+    document.getElementById('items-filter').addEventListener('submit', function (event) {
+        event.preventDefault();
+        table.ajax.reload();
+    });
+});
+</script>
+@endpush
