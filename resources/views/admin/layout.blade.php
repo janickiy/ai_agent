@@ -157,7 +157,20 @@
     </aside>
     <main class="app-main">
         <div class="app-content-header">
-            <div class="container-fluid"><h1 class="mb-0">@yield('title')</h1></div>
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="@hasSection('breadcrumbs') col-sm-6 @else col-12 @endif">
+                        <h1 class="mb-0">@yield('title')</h1>
+                    </div>
+                    @hasSection('breadcrumbs')
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-end mb-0">
+                            @yield('breadcrumbs')
+                        </ol>
+                    </div>
+                    @endif
+                </div>
+            </div>
         </div>
         <div class="app-content">
             <div class="container-fluid">

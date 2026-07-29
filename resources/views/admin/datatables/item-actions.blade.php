@@ -1,6 +1,9 @@
 @can('operate-pipeline')
-<form method="post" action="{{ route('admin.items.retry', $item) }}">
+<form class="m-0" method="post" action="{{ route('admin.items.retry', $item) }}">
     @csrf
-    <button class="btn btn-sm btn-primary" type="submit">Повторить</button>
+    <button class="btn btn-sm btn-outline-primary rounded" type="submit" title="Повторить обработку">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span class="visually-hidden">Повторить обработку</span>
+    </button>
 </form>
 @endcan
