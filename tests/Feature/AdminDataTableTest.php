@@ -23,6 +23,7 @@ final class AdminDataTableTest extends TestCase
         $administrator = $this->administrator('current@example.test');
         $secondAdministrator = $this->administrator('unique-admin@example.test');
         $source = Source::query()->firstOrFail();
+        $source->update(['is_active' => false]);
         $category = $source->categories()->firstOrFail();
         $item = SourceItem::query()->create([
             'source_id' => $source->id,
@@ -120,7 +121,62 @@ final class AdminDataTableTest extends TestCase
             $response
                 ->assertJsonCount(1, 'data')
                 ->assertJsonPath($case['path'], $case['expected']);
+
+            if ($name === 'sources') {
+                $response->assertJsonPath('data.0.DT_RowClass', 'table-danger');
+            }
+
+            if ($name === 'items') {
+                $response->assertJsonPath('data.0.status_class', 'success');
+            }
         }
+    }
+
+    public function test_all_item_statuses_have_color_classes(): void
+    {
+        $this->seed();
+        $administrator = $this->administrator('statuses@example.test');
+        $source = Source::query()->firstOrFail();
+        $expected = [
+            'discovered' => 'secondary',
+            'fetched' => 'info',
+            'extracted' => 'primary',
+            'analyzed' => 'warning',
+            'rejected_irrelevant' => 'secondary',
+            'rejected_advertising' => 'danger',
+            'duplicate' => 'dark',
+            'validation_failed' => 'danger',
+            'accepted' => 'success',
+        ];
+
+        foreach ($expected as $status => $class) {
+            $url = "https://example.test/status/{$status}";
+            SourceItem::query()->create([
+                'source_id' => $source->id,
+                'discovery_url' => $url,
+                'canonical_url' => $url,
+                'canonical_url_hash' => hash('sha256', $url),
+                'title_original' => "Материал {$status}",
+                'status' => $status,
+                'discovered_at' => now()->utc(),
+            ]);
+        }
+
+        $response = $this->actingAs($administrator)
+            ->getJson(route('admin.datatables.items', $this->dataTableQuery(
+                [['data' => 'status', 'name' => SourceItem::query()->getModel()->getTable().'.status']],
+                length: 100,
+            )))
+            ->assertOk()
+            ->assertJsonCount(count($expected), 'data');
+
+        self::assertSame(
+            collect($expected)->sortKeys()->all(),
+            collect($response->json('data'))
+                ->mapWithKeys(static fn (array $row): array => [$row['status'] => $row['status_class']])
+                ->sortKeys()
+                ->all(),
+        );
     }
 
     public function test_datatable_pagination_and_sorting_are_applied_on_the_server(): void

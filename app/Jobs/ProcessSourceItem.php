@@ -35,6 +35,11 @@ final class ProcessSourceItem implements ShouldBeUnique, ShouldQueue
 
     public function handle(NewsPipeline $pipeline): void
     {
-        $pipeline->process(SourceItem::query()->with('source')->findOrFail($this->sourceItemId));
+        $item = SourceItem::query()->with('source')->find($this->sourceItemId);
+        if ($item === null) {
+            return;
+        }
+
+        $pipeline->process($item);
     }
 }

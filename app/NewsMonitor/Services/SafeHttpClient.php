@@ -20,7 +20,7 @@ final class SafeHttpClient implements HttpFetcher
 
     public function get(string $url, bool $checkRobots = true): FetchResult
     {
-        $current = $this->canonicalizer->canonicalize($url);
+        $current = $this->normalizeFetchUrl($url);
         if ($checkRobots && ! $this->robotsAllows($current)) {
             throw new UnsafeUrlException('URL is disallowed by robots.txt.');
         }
@@ -43,7 +43,7 @@ final class SafeHttpClient implements HttpFetcher
                 if (! is_string($location) || $location === '') {
                     throw new RuntimeException('Redirect has no Location header.');
                 }
-                $current = $this->canonicalizer->canonicalize(
+                $current = $this->normalizeFetchUrl(
                     (string) UriResolver::resolve(new Uri($current), new Uri($location)),
                 );
 
@@ -61,6 +61,37 @@ final class SafeHttpClient implements HttpFetcher
         }
 
         throw new RuntimeException('Unexpected redirect state.');
+    }
+
+    private function normalizeFetchUrl(string $url): string
+    {
+        $decoded = trim(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $normalized = $this->canonicalizer->canonicalize($decoded);
+        $parts = parse_url($normalized);
+        $host = (string) ($parts['host'] ?? '');
+        if ($host !== '' && preg_match('/[^\x20-\x7E]/', $host) === 1) {
+            $asciiHost = function_exists('idn_to_ascii')
+                ? idn_to_ascii($host, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46)
+                : false;
+            if (! is_string($asciiHost) || $asciiHost === '') {
+                throw new UnsafeUrlException('Internationalized host cannot be converted to ASCII.');
+            }
+
+            $origin = $parts['scheme'].'://'.$host;
+            $normalized = $parts['scheme'].'://'.$asciiHost.substr($normalized, strlen($origin));
+        }
+
+        $path = (string) (parse_url($decoded, PHP_URL_PATH) ?? '/');
+        if ($path === '/' || ! str_ends_with($path, '/')) {
+            return $normalized;
+        }
+
+        $queryPosition = strpos($normalized, '?');
+        if ($queryPosition === false) {
+            return "{$normalized}/";
+        }
+
+        return substr($normalized, 0, $queryPosition).'/'.substr($normalized, $queryPosition);
     }
 
     public function assertPublicUrl(string $url): void

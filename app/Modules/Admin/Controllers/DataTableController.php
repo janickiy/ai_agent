@@ -35,6 +35,19 @@ final class DataTableController extends Controller
         'accepted',
     ];
 
+    /** @var array<string, string> */
+    private const ITEM_STATUS_CLASSES = [
+        'discovered' => 'secondary',
+        'fetched' => 'info',
+        'extracted' => 'primary',
+        'analyzed' => 'warning',
+        'rejected_irrelevant' => 'secondary',
+        'rejected_advertising' => 'danger',
+        'duplicate' => 'dark',
+        'validation_failed' => 'danger',
+        'accepted' => 'success',
+    ];
+
     public function categories(): JsonResponse
     {
         $query = NewsCategory::query()
@@ -67,6 +80,7 @@ final class DataTableController extends Controller
             ->withCount('items');
 
         return DataTables::eloquent($query)
+            ->setRowClass(static fn (Source $source): string => $source->is_active ? '' : 'table-danger')
             ->addColumn(
                 'actions',
                 static fn (Source $source): string => view(
@@ -115,6 +129,10 @@ final class DataTableController extends Controller
             ->editColumn(
                 'source_published_at',
                 fn (SourceItem $item): string => $this->date($item->source_published_at),
+            )
+            ->addColumn(
+                'status_class',
+                static fn (SourceItem $item): string => self::ITEM_STATUS_CLASSES[$item->status] ?? 'secondary',
             )
             ->addColumn(
                 'actions',

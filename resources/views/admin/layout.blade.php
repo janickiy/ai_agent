@@ -87,6 +87,9 @@
         table.dataTable.table-striped > tbody > tr:nth-of-type(odd) > * {
             --bs-table-bg-type: rgba(var(--bs-secondary-bg-rgb), .72);
         }
+        table.dataTable > tbody > tr.table-danger > * {
+            --bs-table-bg-type: var(--bs-danger-bg-subtle);
+        }
         table.dataTable .btn-sm {
             min-height: 34px;
             min-width: 34px;
@@ -114,6 +117,18 @@
                 <li class="nav-item d-none d-md-block"><span class="nav-link">ИИ-агент отраслевых новостей</span></li>
             </ul>
             <ul class="navbar-nav ms-auto">
+                @can('purge-content')
+                <li class="nav-item d-flex align-items-center">
+                    <form method="post" action="{{ route('admin.data.destroy') }}" onsubmit="return confirm('Очистить все исходные публикации, готовые посты и журнал? Это действие нельзя отменить.')">
+                        @csrf
+                        @method('delete')
+                        <button class="btn btn-outline-danger btn-sm mx-2" type="submit" title="Очистить все материалы и журнал">
+                            <i class="bi bi-trash3"></i>
+                            <span class="d-none d-sm-inline">Очистить всё</span>
+                        </button>
+                    </form>
+                </li>
+                @endcan
                 <li class="nav-item"><span class="nav-link">{{ auth()->user()->name }} · {{ auth()->user()->role }}</span></li>
                 <li class="nav-item">
                     <form method="post" action="{{ route('logout') }}">@csrf<button class="btn btn-link nav-link" type="submit">Выйти</button></form>

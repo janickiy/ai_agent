@@ -86,8 +86,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: 'status',
                 name: @js($itemsTable.'.status'),
                 render: function (data, type, row) {
+                    const allowedColors = ['secondary', 'info', 'primary', 'warning', 'danger', 'dark', 'success'];
+                    const color = allowedColors.includes(row.status_class) ? row.status_class : 'secondary';
+
                     return type === 'display'
-                        ? '<span class="badge text-bg-secondary">' + escape(data) + '</span><br><small>' + escape(row.rejection_reason || '') + '</small>'
+                        ? '<span class="badge text-bg-' + color + '">' + escape(data) + '</span><br><small>' + escape(row.rejection_reason || '') + '</small>'
                         : data;
                 },
             },

@@ -4,6 +4,7 @@ use App\Modules\Admin\Controllers\AdministratorController;
 use App\Modules\Admin\Controllers\AuthController;
 use App\Modules\Admin\Controllers\CategoryController;
 use App\Modules\Admin\Controllers\DashboardController;
+use App\Modules\Admin\Controllers\DataCleanupController;
 use App\Modules\Admin\Controllers\DataTableController;
 use App\Modules\Admin\Controllers\NewsItemController;
 use App\Modules\Admin\Controllers\ProcessingLogController;
@@ -52,4 +53,5 @@ Route::prefix('admin')
         Route::get('/logs', ProcessingLogController::class)->name('logs.index');
         Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+        Route::delete('/data', DataCleanupController::class)->name('data.destroy');
     });

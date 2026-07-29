@@ -37,6 +37,7 @@ final class NewsMonitorServiceProvider extends ServiceProvider
         Gate::define('manage-categories', static fn (User $user): bool => $user->isAdministrator());
         Gate::define('manage-settings', static fn (User $user): bool => $user->isAdministrator());
         Gate::define('manage-sources', static fn (User $user): bool => $user->isAdministrator());
+        Gate::define('purge-content', static fn (User $user): bool => $user->isAdministrator());
         Gate::define('operate-pipeline', static fn (User $user): bool => $user->canOperate());
     }
 }
