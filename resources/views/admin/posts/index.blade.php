@@ -9,7 +9,7 @@
 
 @section('content')
 @php($postsTable = \App\NewsMonitor\Support\NewsTables::name('posts'))
-<div class="card card-primary card-outline shadow-sm posts-card">
+<div class="card card-primary card-outline shadow-sm admin-table-card posts-card">
     <div class="card-header">
         <div>
             <h3 class="card-title mb-1">

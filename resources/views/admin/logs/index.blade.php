@@ -22,7 +22,7 @@
     @endforeach
 </div>
 
-<div class="card">
+<div class="card admin-table-card">
     <div class="card-header">
         <form class="row g-2 align-items-end" id="logs-filter">
             <div class="col-xl-2 col-md-4">

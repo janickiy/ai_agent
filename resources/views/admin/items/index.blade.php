@@ -34,7 +34,7 @@
     ];
 @endphp
 
-<div class="card card-primary card-outline shadow-sm items-card">
+<div class="card card-primary card-outline shadow-sm admin-table-card items-card">
     <div class="card-header">
         <div>
             <h3 class="card-title mb-1">

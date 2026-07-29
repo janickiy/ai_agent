@@ -8,7 +8,7 @@
 @endsection
 
 @section('content')
-<div class="card card-primary card-outline shadow-sm categories-card">
+<div class="card card-primary card-outline shadow-sm admin-table-card categories-card">
     <div class="card-header">
         <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
             <div>
@@ -75,12 +75,6 @@
     .categories-card .category-table th:last-child,
     .categories-card .category-table td:last-child {
         padding-right: .85rem !important;
-    }
-    .categories-card div.dt-container > .row:last-child {
-        padding-bottom: 5px;
-    }
-    .categories-card div.dt-container > .row:last-child .pagination {
-        margin-bottom: 0;
     }
     .category-icon {
         align-items: center;

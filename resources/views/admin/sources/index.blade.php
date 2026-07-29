@@ -8,7 +8,7 @@
 @endsection
 
 @section('content')
-<div class="card card-primary card-outline shadow-sm sources-card">
+<div class="card card-primary card-outline shadow-sm admin-table-card sources-card">
     <div class="card-header">
         <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
             <div>

@@ -63,6 +63,12 @@
         div.dt-container .pagination {
             margin: 0;
         }
+        .admin-table-card div.dt-container > .row:last-child {
+            padding-bottom: 5px;
+        }
+        .admin-table-card div.dt-container > .row:last-child .pagination {
+            margin-bottom: 0;
+        }
         div.dt-container .page-link {
             min-width: 42px;
             padding: .55rem .8rem;
