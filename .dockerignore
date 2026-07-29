@@ -1,0 +1,11 @@
+.env
+.git
+.idea
+.DS_Store
+node_modules
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tmp
+vendor

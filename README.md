@@ -1,0 +1,176 @@
+# ИИ-агент мониторинга строительных новостей
+
+Рабочий MVP по ТЗ версии 1.2 от 29.07.2026. Сервис автоматически получает публикации из согласованных открытых RSS/Atom-источников, извлекает оригинальные поля, проверяет актуальность, рекламу и дубли, классифицирует материал по одной из 10 обязательных тематик и сохраняет готовый пост со статусом `ready` в отдельную таблицу MySQL `publishing_publication_posts`.
+
+## Что реализовано
+
+- Laravel 13 / PHP 8.4, MySQL 8.4 LTS, Redis, Laravel Queue и Horizon.
+- Независимый опрос источников по расписанию; ошибка одного источника не блокирует остальные.
+- SSRF-защита: только HTTP/HTTPS, запрет localhost/private/link-local/reserved IP, повторная проверка адреса после каждого редиректа, лимиты размера и редиректов, базовое соблюдение `robots.txt`.
+- Извлечение canonical URL, точного заголовка, meta/OG/lead-описания, текста, изображения и даты из JSON-LD, Open Graph и `<time>`.
+- Только техническая нормализация копируемых полей: HTML/entities/control characters/whitespace. Рерайт запрещён.
+- Детерминированный локальный классификатор и сменный `AIProvider`; реализация GigaChat поддерживает OAuth, chat completions, embeddings, повторы, лимиты времени и типизированные ошибки.
+- Фильтр явной и нативной рекламы.
+- Дедупликация по canonical URL, хешу заголовка и описания, хешу текста и семантическому сходству.
+- Идемпотентное транзакционное создание готового поста.
+- Логические пространства БД представлены префиксами таблиц `catalog_`, `collector_`, `analysis_`, `publishing_`, `system_`; SQLite использует те же имена в автотестах.
+- AdminLTE 4: вход, роли `administrator` / `operator` / `viewer`, Dashboard, источники, исходные материалы, причины отклонения, готовые посты и повторная постановка в очередь.
+- Docker-окружение с Nginx, PHP-FPM, MySQL, Redis и Supervisor.
+
+Все обязательные темы прописаны в [config/news.php](config/news.php) и при миграции/заполнении создаются в `catalog_news_categories`:
+
+1. Строительство
+2. Девелопмент
+3. Инфраструктура
+4. Недвижимость
+5. ЖКХ
+6. Архитектура
+7. Строительные материалы
+8. Государственные программы
+9. Транспортная инфраструктура
+10. Промышленное строительство
+
+## Быстрый запуск
+
+Требуются Docker и Docker Compose.
+
+```bash
+cp .env.example .env
+```
+
+До запуска задайте в `.env` как минимум:
+
+```dotenv
+DB_PASSWORD=длинный-случайный-пароль
+MYSQL_ROOT_PASSWORD=отдельный-длинный-пароль
+ADMIN_EMAIL=admin@example.org
+ADMIN_PASSWORD=длинный-пароль-администратора
+AI_PROVIDER=rules
+```
+
+Затем:
+
+```bash
+docker compose build
+docker compose up -d
+docker compose exec php php artisan key:generate
+docker compose exec php php artisan migrate --seed
+```
+
+Панель откроется на `http://localhost:8080/admin`, Horizon — на `http://localhost:8080/horizon`.
+
+Добавьте источник в разделе «Источники» и явно включите флаг «Использование согласовано». До этого источник не опрашивается. Финальный белый список источников намеренно не зашит в код: по ТЗ он подлежит согласованию перед промышленным запуском.
+
+Ручной запуск мониторинга:
+
+```bash
+docker compose exec php php artisan news:monitor --force
+```
+
+Проверка очередей:
+
+```bash
+docker compose exec php php artisan horizon:status
+```
+
+## Режимы AI
+
+`AI_PROVIDER=rules` работает без внешних секретов. Он полезен для разработки, тестирования и прозрачной базовой классификации.
+
+Для GigaChat:
+
+```dotenv
+AI_PROVIDER=gigachat
+GIGACHAT_AUTH_KEY=ключ_авторизации_проекта
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
+GIGACHAT_MODEL=GigaChat-2-Max
+GIGACHAT_EMBEDDING_MODEL=EmbeddingsGigaR
+GIGACHAT_EMBEDDING_FALLBACK=true
+```
+
+Вместо `GIGACHAT_AUTH_KEY` можно передать `GIGACHAT_CLIENT_ID` и `GIGACHAT_CLIENT_SECRET`; провайдер сформирует Basic-ключ внутри процесса. Секреты не записываются в БД и журналы.
+
+Актуальные адреса API вынесены в окружение. Начальные значения соответствуют официальному API:
+
+- OAuth: `https://ngw.devices.sberbank.ru:9443/api/v2/oauth`
+- REST: `https://api.giga.chat/v1`
+
+Проверка TLS остаётся включённой. В PHP-образ устанавливаются официальные корневой и выпускающий сертификаты НУЦ Минцифры из `docker/certs`; отключать `GIGACHAT_VERIFY_SSL` для запуска не требуется.
+
+Если тариф проекта не включает платный endpoint embeddings, `GIGACHAT_EMBEDDING_FALLBACK=true` сохраняет работу дедупликации с локальным детерминированным сравнением. Классификация и фильтрация контента при этом продолжают выполняться через GigaChat.
+
+Если AI временно недоступен, задание завершится временной ошибкой и будет повторено очередью; готовый пост не создаётся.
+
+## Контракт готового поста
+
+Выход системы — только `publishing_publication_posts`. Основные поля:
+
+| Поле | Назначение |
+|---|---|
+| `image_url` | Основное изображение или `NULL` |
+| `title_original` | Точная копия заголовка |
+| `description_original` | Точная копия описания/лида |
+| `source_url` | Canonical URL первоисточника |
+| `read_more_label` | Всегда `Читать в источнике` |
+| `source_name` | Название источника |
+| `source_published_at` | Дата первоисточника в UTC |
+| `category_id` | Основная тема |
+| `hashtags` | JSON-массив из 1–7 хэштегов |
+| `status` | `ready`, `reserved`, `exported`, `export_failed`, `disabled` |
+
+Уникальные ограничения по `source_item_id`, `idempotency_key` и `content_hash` защищают от повторной выдачи при повторном запуске.
+
+## Локальная разработка и тесты
+
+Локальный PHP может использовать SQLite для тестов:
+
+```bash
+php artisan test
+./vendor/bin/pint --test
+docker compose config --quiet
+```
+
+Критические сценарии покрывают:
+
+- наличие 10 тематик;
+- извлечение оригинальных полей и даты;
+- рекламный материал;
+- просроченную публикацию;
+- отсутствие описания;
+- точный дубль по другому URL;
+- идемпотентный повторный запуск;
+- структуру `ready`-поста;
+- доступ к административной панели.
+
+## Эксплуатационные настройки
+
+Пороговые значения задаются только окружением:
+
+- `ACTUALITY_WINDOW_DAYS`
+- `CATEGORY_CONFIDENCE_THRESHOLD`
+- `AD_CONFIDENCE_THRESHOLD`
+- `SEMANTIC_DUPLICATE_THRESHOLD`
+- `FETCH_TIMEOUT_SECONDS`
+- `MAX_RESPONSE_BYTES`
+- `MAX_REDIRECTS`
+- `PUBLICATION_OUTPUT_ENABLED`
+
+Если `PUBLICATION_OUTPUT_ENABLED=false`, мониторинг и анализ продолжаются, но новые строки `ready` не создаются.
+
+Перед промышленным запуском необходимо отдельно согласовать белый список источников, интервалы опроса, пороги классификации и дублей, права на изображения, суточный объём, сроки хранения и механизм внешнего получения готовых строк.
+
+## Резервное копирование
+
+Пример логического бэкапа:
+
+```bash
+docker compose exec -T mysql sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > news-monitor.sql
+```
+
+Восстановление выполняйте только в подготовленную пустую БД:
+
+```bash
+docker compose exec -T mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < news-monitor.sql
+```
+
+После восстановления запустите `php artisan migrate --force` и проверьте `php artisan horizon:status`.

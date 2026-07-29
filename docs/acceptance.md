@@ -1,0 +1,23 @@
+# Карта приёмки MVP
+
+| Сценарий ТЗ | Состояние | Проверка |
+|---|---|---|
+| AT-01, AT-13, AT-14 | Реализовано | `NewsPipelineTest` |
+| AT-02 | Реализовано | `CategoryCatalogTest` |
+| AT-03 | Реализовано в pipeline | canonical URL + уникальный хеш |
+| AT-04 | Реализовано | `NewsPipelineTest` |
+| AT-05 | Реализовано | `AIProvider::compareArticles`, порог окружения |
+| AT-06 | Реализовано | `NewsPipelineTest` |
+| AT-07 | Реализовано | `NewsPipelineTest` |
+| AT-08 | Реализовано | дата обязательна, иначе `validation_failed` |
+| AT-09 | Реализовано | `image_url` nullable |
+| AT-10, AT-11 | Реализовано | `ContentNormalizerTest`, `NewsPipelineTest` |
+| AT-12 | Реализовано | `NewsPipelineTest` |
+| AT-15 | Реализовано | `docker compose config --quiet` |
+| AT-16, AT-17 | Реализовано на уровне контракта и HTTP-клиента | `AI_PROVIDER=gigachat`, типизированные DTO/ошибки |
+| AT-18 | Реализовано | `app/Modules/Admin`, AdminLTE 4 |
+| AT-19, AT-20 | Реализовано для маршрутов и источников | `AdminAccessTest` |
+| AT-21 | Реализованы 13 показателей | Dashboard |
+| AT-22 | Реализованы рабочее состояние, предупреждение и отключение публикации | Dashboard |
+
+Перед финальной промышленной приёмкой нужны согласованный набор реальных источников, размеченный корпус для измерения качества классификации/дедупликации и нагрузочные испытания на согласованном суточном объёме.
