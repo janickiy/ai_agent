@@ -4,24 +4,36 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Controllers;
 
+use App\Enums\ProcessingStage;
+use App\Enums\ProcessingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\NewsMonitor\Models\NewsCategory;
-use App\NewsMonitor\Models\ProcessingLog;
-use App\NewsMonitor\Models\PublicationPost;
-use App\NewsMonitor\Models\Source;
-use App\NewsMonitor\Models\SourceItem;
-use App\NewsMonitor\Support\NewsTables;
-use Carbon\CarbonImmutable;
+use App\Modules\NewsMonitor\Models\NewsCategory;
+use App\Modules\NewsMonitor\Models\ProcessingLog;
+use App\Modules\NewsMonitor\Models\PublicationPost;
+use App\Modules\NewsMonitor\Models\Source;
+use App\Modules\NewsMonitor\Models\SourceItem;
+use App\Modules\NewsMonitor\Repositories\Catalog\NewsCategoryRepository;
+use App\Modules\NewsMonitor\Repositories\Catalog\SourceRepository;
+use App\Modules\Admin\Repositories\AdministratorRepository;
+use App\Modules\Admin\Repositories\AdminReadRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Yajra\DataTables\Exceptions\Exception;
 use Yajra\DataTables\Facades\DataTables;
 
 final class DataTableController extends Controller
 {
+    public function __construct(
+        private readonly NewsCategoryRepository $categories,
+        private readonly SourceRepository $sources,
+        private readonly AdministratorRepository $administrators,
+        private readonly AdminReadRepository $adminReads,
+    ) {}
+
     /** @var list<string> */
     private const ITEM_STATUSES = [
         'discovered',
@@ -48,10 +60,12 @@ final class DataTableController extends Controller
         'accepted' => 'success',
     ];
 
+    /**
+     * @throws Exception
+     */
     public function categories(): JsonResponse
     {
-        $query = NewsCategory::query()
-            ->withCount('sources');
+        $query = $this->categories->forDataTable();
 
         return DataTables::eloquent($query)
             ->filterColumn('name', static function (Builder $query, string $keyword): void {
@@ -74,10 +88,12 @@ final class DataTableController extends Controller
             ->toJson();
     }
 
+    /**
+     * @throws Exception
+     */
     public function sources(): JsonResponse
     {
-        $query = Source::query()
-            ->withCount('items');
+        $query = $this->sources->forDataTable();
 
         return DataTables::eloquent($query)
             ->setRowClass(static fn (Source $source): string => $source->is_active ? '' : 'table-danger')
@@ -92,30 +108,16 @@ final class DataTableController extends Controller
             ->toJson();
     }
 
+    /**
+     * @throws Exception
+     */
     public function items(Request $request): JsonResponse
     {
         $filters = $request->validate([
             'status' => ['nullable', Rule::in(self::ITEM_STATUSES)],
         ]);
-        $items = NewsTables::name('source_items');
-        $sources = NewsTables::name('sources');
-        $analyses = NewsTables::name('analyses');
-        $categories = NewsTables::name('categories');
-
-        $query = SourceItem::query()
-            ->leftJoin("{$sources} as source_table", 'source_table.id', '=', "{$items}.source_id")
-            ->leftJoin("{$analyses} as analysis_table", 'analysis_table.source_item_id', '=', "{$items}.id")
-            ->leftJoin("{$categories} as category_table", 'category_table.id', '=', 'analysis_table.category_id')
-            ->select([
-                "{$items}.*",
-                'source_table.name as source_name',
-                'category_table.name as category_name',
-                'analysis_table.category_confidence',
-            ])
-            ->when(
-                isset($filters['status']),
-                static fn (Builder $query) => $query->where("{$items}.status", $filters['status']),
-            );
+        $query = $this->adminReads->sourceItemsForDataTable($filters['status'] ?? null);
+        $items = $query->getModel()->getTable();
 
         return DataTables::eloquent($query)
             ->filterColumn(
@@ -154,17 +156,13 @@ final class DataTableController extends Controller
             ->toJson();
     }
 
+    /**
+     * @throws Exception
+     */
     public function posts(): JsonResponse
     {
-        $posts = NewsTables::name('posts');
-        $categories = NewsTables::name('categories');
-
-        $query = PublicationPost::query()
-            ->leftJoin("{$categories} as category_table", 'category_table.id', '=', "{$posts}.category_id")
-            ->select([
-                "{$posts}.*",
-                'category_table.name as category_name',
-            ]);
+        $query = $this->adminReads->publicationPostsForDataTable();
+        $posts = $query->getModel()->getTable();
 
         return DataTables::eloquent($query)
             ->filterColumn(
@@ -194,51 +192,19 @@ final class DataTableController extends Controller
             ->toJson();
     }
 
+    /**
+     * @throws Exception
+     */
     public function logs(Request $request): JsonResponse
     {
         $filters = $request->validate([
-            'stage' => ['nullable', Rule::in(array_keys(ProcessingLogController::STAGES))],
-            'status' => ['nullable', Rule::in(array_keys(ProcessingLogController::STATUSES))],
+            'stage' => ['nullable', Rule::enum(ProcessingStage::class)],
+            'status' => ['nullable', Rule::enum(ProcessingStatus::class)],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
         ]);
-        $logs = NewsTables::name('processing_logs');
-        $sources = NewsTables::name('sources');
-        $items = NewsTables::name('source_items');
         $displayTimezone = (string) config('app.display_timezone');
-
-        $query = ProcessingLog::query()
-            ->leftJoin("{$sources} as source_table", 'source_table.id', '=', "{$logs}.source_id")
-            ->leftJoin("{$items} as item_table", 'item_table.id', '=', "{$logs}.source_item_id")
-            ->select([
-                "{$logs}.*",
-                'source_table.name as source_name',
-                'item_table.title_original as source_item_title',
-            ])
-            ->when(
-                isset($filters['stage']),
-                static fn (Builder $query) => $query->where("{$logs}.stage", $filters['stage']),
-            )
-            ->when(
-                isset($filters['status']),
-                static fn (Builder $query) => $query->where("{$logs}.status", $filters['status']),
-            )
-            ->when(
-                isset($filters['date_from']),
-                static fn (Builder $query) => $query->where(
-                    "{$logs}.started_at",
-                    '>=',
-                    CarbonImmutable::parse($filters['date_from'], $displayTimezone)->startOfDay()->utc(),
-                ),
-            )
-            ->when(
-                isset($filters['date_to']),
-                static fn (Builder $query) => $query->where(
-                    "{$logs}.started_at",
-                    '<=',
-                    CarbonImmutable::parse($filters['date_to'], $displayTimezone)->endOfDay()->utc(),
-                ),
-            );
+        $query = $this->adminReads->processingLogsForDataTable($filters, $displayTimezone);
 
         return DataTables::eloquent($query)
             ->editColumn(
@@ -247,17 +213,17 @@ final class DataTableController extends Controller
             )
             ->addColumn(
                 'stage_label',
-                static fn (ProcessingLog $log): string => ProcessingLogController::STAGES[$log->stage]
+                static fn (ProcessingLog $log): string => ProcessingStage::tryFrom($log->stage)?->label()
                     ?? $log->stage,
             )
             ->addColumn(
                 'status_label',
-                static fn (ProcessingLog $log): string => ProcessingLogController::STATUSES[$log->status]['label']
+                static fn (ProcessingLog $log): string => ProcessingStatus::tryFrom($log->status)?->label()
                     ?? $log->status,
             )
             ->addColumn(
                 'status_class',
-                static fn (ProcessingLog $log): string => ProcessingLogController::STATUSES[$log->status]['class']
+                static fn (ProcessingLog $log): string => ProcessingStatus::tryFrom($log->status)?->badgeClass()
                     ?? 'secondary',
             )
             ->addColumn(
@@ -278,12 +244,14 @@ final class DataTableController extends Controller
             ->toJson();
     }
 
+    /**
+     * @throws Exception
+     */
     public function administrators(): JsonResponse
     {
         Gate::authorize('manage-administrators');
 
-        $query = User::query()
-            ->where('role', 'administrator');
+        $query = $this->administrators->forDataTable();
 
         return DataTables::eloquent($query)
             ->addColumn(

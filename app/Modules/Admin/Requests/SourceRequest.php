@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Requests;
 
-use App\NewsMonitor\Support\NewsTables;
+use App\Modules\NewsMonitor\Support\NewsTables;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

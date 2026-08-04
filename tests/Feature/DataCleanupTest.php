@@ -6,15 +6,17 @@ namespace Tests\Feature;
 
 use App\Jobs\ProcessSourceItem;
 use App\Models\User;
-use App\NewsMonitor\Models\AuditLog;
-use App\NewsMonitor\Models\ItemAnalysis;
-use App\NewsMonitor\Models\ItemDuplicate;
-use App\NewsMonitor\Models\ProcessingLog;
-use App\NewsMonitor\Models\PublicationPost;
-use App\NewsMonitor\Models\Source;
-use App\NewsMonitor\Models\SourceItem;
-use App\NewsMonitor\Services\NewsPipeline;
-use App\NewsMonitor\Support\NewsTables;
+use App\Modules\NewsMonitor\Models\AuditLog;
+use App\Modules\NewsMonitor\Models\ItemAnalysis;
+use App\Modules\NewsMonitor\Models\ItemDuplicate;
+use App\Modules\NewsMonitor\Models\ProcessingLog;
+use App\Modules\NewsMonitor\Models\PublicationPost;
+use App\Modules\NewsMonitor\Models\Source;
+use App\Modules\NewsMonitor\Models\SourceItem;
+use App\Modules\NewsMonitor\Repositories\Pipeline\SourceItemRepository;
+use App\Modules\NewsMonitor\Services\NewsPipeline;
+use App\Modules\NewsMonitor\Support\NewsTables;
+use App\Modules\Admin\Repositories\ContentCleanupRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -136,7 +138,103 @@ final class DataCleanupTest extends TestCase
             'processing_logs' => 1,
         ], $purgeAudit->before);
 
-        (new ProcessSourceItem($original->id))->handle(app(NewsPipeline::class));
+        (new ProcessSourceItem($original->id))->handle(
+            app(NewsPipeline::class),
+            app(SourceItemRepository::class),
+        );
+    }
+
+    public function test_content_cleanup_repository_purges_only_monitoring_content_and_returns_pre_purge_counts(): void
+    {
+        $this->seed();
+        $source = Source::query()->firstOrFail();
+        $category = $source->categories()->firstOrFail();
+        [$original, $duplicate] = $this->items($source);
+
+        ItemAnalysis::query()->create([
+            'source_item_id' => $original->id,
+            'category_id' => $category->id,
+            'is_actual' => true,
+            'actuality_score' => 1,
+            'is_advertising' => false,
+            'ad_confidence' => 0,
+            'category_confidence' => 0.95,
+            'hashtags' => [],
+            'entities' => [],
+            'provider' => 'rules',
+            'model' => 'test-model',
+            'prompt_version' => 'test-prompt',
+            'decision_meta' => [],
+            'checked_at' => now()->utc(),
+        ]);
+        ItemDuplicate::query()->create([
+            'source_item_id' => $duplicate->id,
+            'original_source_item_id' => $original->id,
+            'method' => 'content_hash',
+            'similarity' => 1,
+            'algorithm_version' => 'test-v1',
+            'meta' => [],
+        ]);
+        $post = PublicationPost::query()->create([
+            'source_item_id' => $original->id,
+            'idempotency_key' => 'repository-cleanup-post',
+            'source_url' => $original->canonical_url,
+            'source_name' => $source->name,
+            'source_published_at' => now()->utc(),
+            'title_original' => 'Пост для репозиторной очистки',
+            'description_original' => 'Описание поста для репозиторной очистки',
+            'read_more_label' => 'Читать в источнике',
+            'category_id' => $category->id,
+            'hashtags' => ['#Тест'],
+            'content_hash' => hash('sha256', 'repository-cleanup-post'),
+            'status' => 'ready',
+            'validation_meta' => [],
+            'ready_at' => now()->utc(),
+        ]);
+        ProcessingLog::query()->create([
+            'correlation_id' => (string) Str::uuid(),
+            'source_id' => $source->id,
+            'source_item_id' => $original->id,
+            'publication_post_id' => $post->id,
+            'stage' => 'publish',
+            'status' => 'success',
+            'attempt' => 1,
+            'started_at' => now()->utc(),
+        ]);
+        $eventId = DB::table(NewsTables::name('events'))->insertGetId([
+            'fingerprint' => 'repository-cleanup-event',
+            'title' => 'Событие для репозиторной очистки',
+            'event_at' => now()->utc(),
+            'created_at' => now()->utc(),
+            'updated_at' => now()->utc(),
+        ]);
+        DB::table(NewsTables::name('event_items'))->insert([
+            'news_event_id' => $eventId,
+            'source_item_id' => $original->id,
+            'similarity' => 1,
+        ]);
+
+        $result = app(ContentCleanupRepository::class)->purge();
+
+        self::assertSame([
+            'source_items' => 2,
+            'posts' => 1,
+            'processing_logs' => 1,
+        ], $result);
+        foreach ([
+            'processing_logs',
+            'posts',
+            'event_items',
+            'duplicates',
+            'analyses',
+            'source_items',
+            'events',
+        ] as $table) {
+            $this->assertDatabaseCount(NewsTables::name($table), 0);
+        }
+
+        self::assertTrue(Source::query()->whereKey($source->id)->exists());
+        self::assertTrue($source->categories()->whereKey($category->id)->exists());
     }
 
     public function test_viewer_cannot_see_or_call_clear_action(): void

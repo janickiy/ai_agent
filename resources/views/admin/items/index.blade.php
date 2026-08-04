@@ -9,7 +9,7 @@
 
 @section('content')
 @php
-    $itemsTable = \App\NewsMonitor\Support\NewsTables::name('source_items');
+    $itemsTable = \App\Modules\NewsMonitor\Support\NewsTables::name('source_items');
     $itemStatusLabels = [
         'discovered' => 'Обнаружен',
         'fetched' => 'Загружен',

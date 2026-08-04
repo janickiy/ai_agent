@@ -8,7 +8,7 @@
 @endsection
 
 @section('content')
-@php($postsTable = \App\NewsMonitor\Support\NewsTables::name('posts'))
+@php($postsTable = \App\Modules\NewsMonitor\Support\NewsTables::name('posts'))
 <div class="card card-primary card-outline shadow-sm admin-table-card posts-card">
     <div class="card-header">
         <div>

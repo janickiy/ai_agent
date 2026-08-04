@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\NewsMonitor\Models\SourceItem;
-use App\NewsMonitor\Services\NewsPipeline;
+use App\Modules\NewsMonitor\Repositories\Pipeline\SourceItemRepository;
+use App\Modules\NewsMonitor\Services\NewsPipeline;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -33,9 +33,9 @@ final class ProcessSourceItem implements ShouldBeUnique, ShouldQueue
         return (string) $this->sourceItemId;
     }
 
-    public function handle(NewsPipeline $pipeline): void
+    public function handle(NewsPipeline $pipeline, SourceItemRepository $sourceItems): void
     {
-        $item = SourceItem::query()->with('source')->find($this->sourceItemId);
+        $item = $sourceItems->findForProcessing($this->sourceItemId);
         if ($item === null) {
             return;
         }

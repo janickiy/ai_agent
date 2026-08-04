@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\NewsMonitor\Services\SourceMonitor;
+use App\Modules\NewsMonitor\Services\SourceMonitor;
 use Illuminate\Console\Command;
 
 final class MonitorNews extends Command

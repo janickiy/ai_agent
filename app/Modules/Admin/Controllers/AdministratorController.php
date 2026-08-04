@@ -4,19 +4,31 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Controllers;
 
+use App\DTO\Admin\AdministratorData;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\NewsMonitor\Services\AuditLogger;
+use App\Modules\Admin\Repositories\AdministratorRepository;
 use App\Modules\Admin\Requests\AdministratorRequest;
-use App\NewsMonitor\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 final class AdministratorController extends Controller
 {
+    public function __construct(
+        private readonly AdministratorRepository $administrators,
+        private readonly AuditLogger             $audit,
+    )
+    {
+    }
+
+    /**
+     * @return View
+     */
     public function index(): View
     {
         Gate::authorize('manage-administrators');
@@ -24,6 +36,9 @@ final class AdministratorController extends Controller
         return view('admin.administrators.index');
     }
 
+    /**
+     * @return View
+     */
     public function create(): View
     {
         Gate::authorize('manage-administrators');
@@ -31,14 +46,26 @@ final class AdministratorController extends Controller
         return view('admin.administrators.create');
     }
 
+    /**
+     * @param AdministratorRequest $request
+     * @return RedirectResponse
+     * @throws \Throwable
+     */
     public function store(AdministratorRequest $request): RedirectResponse
     {
-        $administrator = User::query()->create([
-            ...$request->validated(),
-            'role' => 'administrator',
-            'admin_access' => true,
-        ]);
-        $this->audit($request->user()->id, 'administrator.created', $administrator, null, $administrator->toArray());
+        DB::transaction(function () use ($request): void {
+            $administrator = $this->administrators->create(
+                AdministratorData::fromArray($request->validated()),
+            );
+            $this->audit->record(
+                $request->user()->id,
+                'administrator.created',
+                $administrator,
+                $administrator->getKey(),
+                null,
+                $administrator->toArray(),
+            );
+        });
 
         return redirect()->route('admin.administrators.index')->with('status', 'Администратор добавлен.');
     }
@@ -56,38 +83,39 @@ final class AdministratorController extends Controller
         $this->ensureAdministrator($administrator);
         $values = $request->validated();
 
-        if ($request->user()->is($administrator) && ! $values['is_active']) {
+        if ($request->user()->is($administrator) && !$values['is_active']) {
             return back()->withErrors([
                 'administrator' => 'Нельзя отключить собственную учетную запись.',
             ])->withInput();
         }
 
-        if (
-            $administrator->is_active
-            && ! $values['is_active']
-            && $this->activeAdministratorsCount() <= 1
-        ) {
-            return back()->withErrors([
-                'administrator' => 'Нельзя отключить последнего активного администратора.',
-            ])->withInput();
-        }
+        DB::transaction(function () use ($request, $administrator, $values): void {
+            $activeCount = $this->administrators->activeCountForUpdate();
+            $locked = $this->administrators->lockForUpdate($administrator);
+            if (
+                $locked->is_active
+                && !$values['is_active']
+                && $activeCount <= 1
+            ) {
+                throw ValidationException::withMessages([
+                    'administrator' => 'Нельзя отключить последнего активного администратора.',
+                ]);
+            }
 
-        $before = $administrator->toArray();
-        if (($values['password'] ?? '') === '') {
-            $values = Arr::except($values, ['password']);
-        }
-        $administrator->update([
-            ...$values,
-            'role' => 'administrator',
-            'admin_access' => true,
-        ]);
-        $this->audit(
-            $request->user()->id,
-            'administrator.updated',
-            $administrator,
-            $before,
-            $administrator->fresh()->toArray(),
-        );
+            $before = $locked->toArray();
+            $updated = $this->administrators->update(
+                $locked,
+                AdministratorData::fromArray($values),
+            );
+            $this->audit->record(
+                $request->user()->id,
+                'administrator.updated',
+                $updated,
+                $updated->getKey(),
+                $before,
+                $updated->toArray(),
+            );
+        });
 
         return redirect()->route('admin.administrators.index')->with('status', 'Администратор обновлён.');
     }
@@ -103,15 +131,26 @@ final class AdministratorController extends Controller
             ]);
         }
 
-        if ($administrator->is_active && $this->activeAdministratorsCount() <= 1) {
-            return back()->withErrors([
-                'administrator' => 'Нельзя удалить последнего активного администратора.',
-            ]);
-        }
+        DB::transaction(function () use ($request, $administrator): void {
+            $activeCount = $this->administrators->activeCountForUpdate();
+            $locked = $this->administrators->lockForUpdate($administrator);
+            if ($locked->is_active && $activeCount <= 1) {
+                throw ValidationException::withMessages([
+                    'administrator' => 'Нельзя удалить последнего активного администратора.',
+                ]);
+            }
 
-        $before = $administrator->toArray();
-        $administrator->delete();
-        $this->audit($request->user()->id, 'administrator.deleted', $administrator, $before, null);
+            $before = $locked->toArray();
+            $this->administrators->delete($locked);
+            $this->audit->record(
+                $request->user()->id,
+                'administrator.deleted',
+                $locked,
+                $locked->getKey(),
+                $before,
+                null,
+            );
+        });
 
         return redirect()->route('admin.administrators.index')->with('status', 'Администратор удалён.');
     }
@@ -119,35 +158,5 @@ final class AdministratorController extends Controller
     private function ensureAdministrator(User $administrator): void
     {
         abort_unless($administrator->isAdministrator(), 404);
-    }
-
-    private function activeAdministratorsCount(): int
-    {
-        return User::query()
-            ->where('role', 'administrator')
-            ->where('is_active', true)
-            ->where('admin_access', true)
-            ->count();
-    }
-
-    /** @param array<string, mixed>|null $before @param array<string, mixed>|null $after */
-    private function audit(
-        int $userId,
-        string $action,
-        User $administrator,
-        ?array $before,
-        ?array $after,
-    ): void {
-        AuditLog::query()->create([
-            'user_id' => $userId,
-            'correlation_id' => (string) Str::uuid(),
-            'action' => $action,
-            'entity_type' => User::class,
-            'entity_id' => (string) $administrator->id,
-            'before' => $before,
-            'after' => $after,
-            'result' => 'success',
-            'created_at' => now()->utc(),
-        ]);
     }
 }

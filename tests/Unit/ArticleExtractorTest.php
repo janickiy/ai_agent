@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\NewsMonitor\Services\ArticleExtractor;
-use App\NewsMonitor\Services\ContentNormalizer;
-use App\NewsMonitor\Services\UrlCanonicalizer;
+use App\Modules\NewsMonitor\Services\ArticleExtractor;
+use App\Modules\NewsMonitor\Services\ContentNormalizer;
+use App\Modules\NewsMonitor\Services\UrlCanonicalizer;
 use PHPUnit\Framework\TestCase;
 
 final class ArticleExtractorTest extends TestCase

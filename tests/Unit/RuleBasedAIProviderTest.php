@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\NewsMonitor\AI\DTO\ArticleAnalysisRequest;
-use App\NewsMonitor\AI\Providers\RuleBasedAIProvider;
+use App\Modules\NewsMonitor\AI\DTO\ArticleAnalysisRequest;
+use App\Modules\NewsMonitor\AI\Providers\RuleBasedAIProvider;
 use Tests\TestCase;
 
 final class RuleBasedAIProviderTest extends TestCase

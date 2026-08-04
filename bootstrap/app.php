@@ -20,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash([
+            'gigachat_auth_key',
+            'gigachat_client_id',
+            'gigachat_client_secret',
+            'yandexgpt_api_key',
+            'yandexgpt_iam_token',
+            'openai_api_key',
+        ]);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );

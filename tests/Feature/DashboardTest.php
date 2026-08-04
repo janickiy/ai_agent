@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\NewsMonitor\Models\ProcessingLog;
-use App\NewsMonitor\Models\Source;
-use App\NewsMonitor\Models\SourceItem;
-use App\NewsMonitor\Support\NewsTables;
+use App\Modules\NewsMonitor\Models\ProcessingLog;
+use App\Modules\NewsMonitor\Models\Source;
+use App\Modules\NewsMonitor\Models\SourceItem;
+use App\Modules\NewsMonitor\Support\NewsTables;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

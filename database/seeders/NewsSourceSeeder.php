@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\NewsMonitor\Models\NewsCategory;
-use App\NewsMonitor\Models\Source;
+use App\Modules\NewsMonitor\Models\NewsCategory;
+use App\Modules\NewsMonitor\Models\Source;
 use Illuminate\Database\Seeder;
 
 final class NewsSourceSeeder extends Seeder

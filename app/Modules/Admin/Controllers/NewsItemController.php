@@ -6,18 +6,25 @@ namespace App\Modules\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessSourceItem;
-use App\NewsMonitor\Models\SourceItem;
+use App\Modules\NewsMonitor\Models\SourceItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 final class NewsItemController extends Controller
 {
+    /**
+     * @return View
+     */
     public function index(): View
     {
         return view('admin.items.index');
     }
 
+    /**
+     * @param SourceItem $item
+     * @return RedirectResponse
+     */
     public function retry(SourceItem $item): RedirectResponse
     {
         Gate::authorize('operate-pipeline');

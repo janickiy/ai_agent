@@ -4,46 +4,139 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Controllers;
 
+use App\DTO\Settings\AgentSettingsData;
+use App\DTO\Settings\AISettingsData;
 use App\Http\Controllers\Controller;
+use App\Modules\NewsMonitor\Models\SystemSetting;
+use App\Modules\NewsMonitor\Services\AgentSettings;
+use App\Modules\NewsMonitor\Services\AISettings;
+use App\Modules\NewsMonitor\Services\AuditLogger;
 use App\Modules\Admin\Requests\SettingsRequest;
-use App\NewsMonitor\Models\AuditLog;
-use App\NewsMonitor\Models\SystemSetting;
-use App\NewsMonitor\Services\AgentSettings;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 final class SettingsController extends Controller
 {
-    public function edit(AgentSettings $settings): View
+    public function edit(AgentSettings $settings, AISettings $aiSettings): View
     {
-        return view('admin.settings.edit', ['settings' => $settings->all()]);
+        return view('admin.settings.edit', [
+            'settings' => $settings->all(),
+            'aiSettings' => $aiSettings->adminValues(),
+            'aiProviderOptions' => AISettings::providerOptions(),
+        ]);
     }
 
-    public function update(SettingsRequest $request, AgentSettings $settings): RedirectResponse
-    {
-        $before = $settings->all();
+    /**
+     * @throws \Throwable
+     */
+    public function update(
+        SettingsRequest $request,
+        AgentSettings $settings,
+        AISettings $aiSettings,
+        AuditLogger $audit,
+    ): RedirectResponse {
+        $before = [
+            'agent' => $settings->all(),
+            'ai' => $aiSettings->auditSnapshot(),
+        ];
         $validated = $request->validated();
-        $values = [
-            'collection_enabled' => (bool) $validated['collection_enabled'],
+        $agentData = AgentSettingsData::fromArray([
             'automatic_publication' => (bool) $validated['automatic_publication'],
             'max_news_age_hours' => (int) $validated['max_news_age_hours'],
             'event_similarity_threshold' => (float) $validated['event_similarity_threshold'],
+        ]);
+        $gigachat = [
+            'auth_url' => $validated['gigachat_auth_url'],
+            'api_url' => $validated['gigachat_api_url'],
+            'scope' => $validated['gigachat_scope'],
+            'model' => $validated['gigachat_model'],
+            'embedding_model' => $validated['gigachat_embedding_model'],
+            'embedding_fallback' => (bool) $validated['gigachat_embedding_fallback'],
+            'timeout' => (int) $validated['gigachat_timeout'],
+            'connect_timeout' => (int) $validated['gigachat_connect_timeout'],
+            'max_attempts' => (int) $validated['gigachat_max_attempts'],
+            'verify_ssl' => (bool) $validated['gigachat_verify_ssl'],
         ];
-        $setting = $settings->update($values);
-
-        AuditLog::query()->create([
-            'user_id' => $request->user()->id,
-            'correlation_id' => (string) Str::uuid(),
-            'action' => 'settings.updated',
-            'entity_type' => SystemSetting::class,
-            'entity_id' => (string) $setting->getKey(),
-            'before' => $before,
-            'after' => $values,
-            'result' => 'success',
-            'created_at' => now()->utc(),
+        $yandexgpt = [
+            'api_url' => $validated['yandexgpt_api_url'],
+            'folder_id' => $validated['yandexgpt_folder_id'] ?? '',
+            'model' => $validated['yandexgpt_model'],
+            'embedding_model' => $validated['yandexgpt_embedding_model'],
+            'timeout' => (int) $validated['yandexgpt_timeout'],
+            'connect_timeout' => (int) $validated['yandexgpt_connect_timeout'],
+            'max_attempts' => (int) $validated['yandexgpt_max_attempts'],
+            'verify_ssl' => (bool) $validated['yandexgpt_verify_ssl'],
+        ];
+        $openai = [
+            'api_url' => $validated['openai_api_url'],
+            'model' => $validated['openai_model'],
+            'embedding_model' => $validated['openai_embedding_model'],
+            'organization' => $validated['openai_organization'] ?? '',
+            'project' => $validated['openai_project'] ?? '',
+            'timeout' => (int) $validated['openai_timeout'],
+            'connect_timeout' => (int) $validated['openai_connect_timeout'],
+            'max_attempts' => (int) $validated['openai_max_attempts'],
+            'verify_ssl' => (bool) $validated['openai_verify_ssl'],
+        ];
+        $providerCredentials = [
+            'gigachat' => [
+                'auth_key' => $validated['gigachat_auth_key'] ?? null,
+                'client_id' => $validated['gigachat_client_id'] ?? null,
+                'client_secret' => $validated['gigachat_client_secret'] ?? null,
+            ],
+            'yandexgpt' => [
+                'api_key' => $validated['yandexgpt_api_key'] ?? null,
+                'iam_token' => $validated['yandexgpt_iam_token'] ?? null,
+            ],
+            'openai' => [
+                'api_key' => $validated['openai_api_key'] ?? null,
+            ],
+        ];
+        $clearCredentials = [
+            'gigachat' => (bool) $validated['clear_gigachat_secrets'],
+            'yandexgpt' => (bool) $validated['clear_yandexgpt_credentials'],
+            'openai' => (bool) $validated['clear_openai_credentials'],
+        ];
+        $aiData = AISettingsData::fromArray([
+            'provider' => $validated['ai_provider'],
+            'provider_settings' => [
+                'gigachat' => $gigachat,
+                'yandexgpt' => $yandexgpt,
+                'openai' => $openai,
+            ],
+            'provider_credentials' => $providerCredentials,
+            'clear_credentials' => $clearCredentials,
         ]);
 
-        return redirect()->route('admin.settings.edit')->with('status', 'Настройки сохранены.');
+        DB::transaction(function () use (
+            $request,
+            $settings,
+            $aiSettings,
+            $audit,
+            $before,
+            $agentData,
+            $aiData,
+        ): void {
+            $setting = $settings->update($agentData);
+            $aiSettings->update($aiData);
+
+            $audit->record(
+                $request->user()->id,
+                'settings.updated',
+                SystemSetting::class,
+                $setting->getKey(),
+                $before,
+                [
+                    'agent' => $settings->all(),
+                    'ai' => $aiSettings->auditSnapshot(),
+                ],
+            );
+        });
+
+        return redirect()
+            ->route('admin.settings.edit')
+            ->with('status', 'Настройки сохранены.')
+            ->with('settings_tab', $validated['settings_tab']);
     }
 }

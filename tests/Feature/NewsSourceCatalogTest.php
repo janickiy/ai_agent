@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\NewsMonitor\Models\Source;
+use App\Modules\NewsMonitor\Models\Source;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

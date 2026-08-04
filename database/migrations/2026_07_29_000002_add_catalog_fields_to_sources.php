@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\NewsMonitor\Support\NewsTables;
+use App\Modules\NewsMonitor\Support\NewsTables;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;

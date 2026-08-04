@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\NewsMonitor\Models\AuditLog;
+use App\Modules\NewsMonitor\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;

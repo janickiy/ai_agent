@@ -14,7 +14,7 @@
 | AT-10, AT-11 | Реализовано | `ContentNormalizerTest`, `NewsPipelineTest` |
 | AT-12 | Реализовано | `NewsPipelineTest` |
 | AT-15 | Реализовано | `docker compose config --quiet` |
-| AT-16, AT-17 | Реализовано на уровне контракта и HTTP-клиента | `AI_PROVIDER=gigachat`, типизированные DTO/ошибки |
+| AT-16, AT-17 | Реализовано на уровне контракта и HTTP-клиента | GigaChat настраивается в БД через админ-панель, типизированные DTO/ошибки |
 | AT-18 | Реализовано | `app/Modules/Admin`, AdminLTE 4 |
 | AT-19, AT-20 | Реализовано для маршрутов и источников | `AdminAccessTest` |
 | AT-21 | Реализованы 13 показателей | Dashboard |

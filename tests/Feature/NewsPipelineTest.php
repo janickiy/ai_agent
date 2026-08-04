@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\NewsMonitor\AI\Contracts\AIProvider;
-use App\NewsMonitor\AI\Providers\RuleBasedAIProvider;
-use App\NewsMonitor\Contracts\HttpFetcher;
-use App\NewsMonitor\DTO\FetchResult;
-use App\NewsMonitor\Models\PublicationPost;
-use App\NewsMonitor\Models\Source;
-use App\NewsMonitor\Models\SourceItem;
-use App\NewsMonitor\Services\AgentSettings;
-use App\NewsMonitor\Services\NewsPipeline;
+use App\DTO\Settings\AgentSettingsData;
+use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
+use App\Modules\NewsMonitor\AI\Providers\RuleBasedAIProvider;
+use App\Modules\NewsMonitor\Contracts\HttpFetcher;
+use App\Modules\NewsMonitor\DTO\FetchResult;
+use App\Modules\NewsMonitor\Models\PublicationPost;
+use App\Modules\NewsMonitor\Models\Source;
+use App\Modules\NewsMonitor\Models\SourceItem;
+use App\Modules\NewsMonitor\Services\AgentSettings;
+use App\Modules\NewsMonitor\Services\NewsPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Tests\TestCase;
@@ -110,12 +111,11 @@ final class NewsPipelineTest extends TestCase
     public function test_disabled_automatic_publication_keeps_analyzed_material_without_a_post(): void
     {
         $this->seed();
-        app(AgentSettings::class)->update([
-            'collection_enabled' => true,
+        app(AgentSettings::class)->update(AgentSettingsData::fromArray([
             'automatic_publication' => false,
             'max_news_age_hours' => 72,
             'event_similarity_threshold' => 0.72,
-        ]);
+        ]));
         $item = $this->item('https://example.org/news/settings');
         $this->fakeFetch([
             $item->canonical_url => $this->html(

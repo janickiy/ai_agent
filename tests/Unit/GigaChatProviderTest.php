@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\NewsMonitor\AI\DTO\ArticleAnalysisRequest;
-use App\NewsMonitor\AI\DTO\ArticleComparisonRequest;
-use App\NewsMonitor\AI\Providers\GigaChatProvider;
+use App\Modules\NewsMonitor\AI\DTO\ArticleAnalysisRequest;
+use App\Modules\NewsMonitor\AI\DTO\ArticleComparisonRequest;
+use App\Modules\NewsMonitor\AI\Providers\GigaChatProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 final class GigaChatProviderTest extends TestCase
 {
     public function test_it_requests_structured_article_analysis_with_json_schema(): void
     {
-        Cache::forget('gigachat:access-token');
+        Cache::flush();
         Http::fakeSequence()
             ->push(['access_token' => 'test-token'], 200)
             ->push([
@@ -71,7 +72,7 @@ final class GigaChatProviderTest extends TestCase
 
     public function test_it_retries_blocked_article_without_full_body(): void
     {
-        Cache::forget('gigachat:access-token');
+        Cache::flush();
         Http::fakeSequence()
             ->push(['access_token' => 'test-token'], 200)
             ->push([
@@ -127,7 +128,7 @@ final class GigaChatProviderTest extends TestCase
 
     public function test_it_retries_invalid_json_without_full_body(): void
     {
-        Cache::forget('gigachat:access-token');
+        Cache::flush();
         Http::fakeSequence()
             ->push(['access_token' => 'test-token'], 200)
             ->push([
@@ -173,7 +174,7 @@ final class GigaChatProviderTest extends TestCase
 
     public function test_it_uses_local_comparison_when_embeddings_are_not_in_the_tariff(): void
     {
-        Cache::forget('gigachat:access-token');
+        Cache::flush();
         Http::fakeSequence()
             ->push(['access_token' => 'test-token'], 200)
             ->push(['status' => 402, 'message' => 'Payment Required'], 402);
@@ -190,11 +191,39 @@ final class GigaChatProviderTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_it_rejects_untrusted_api_endpoints_before_sending_credentials(): void
+    {
+        Http::fake();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        new GigaChatProvider([
+            ...$this->config(),
+            'auth_url' => 'https://attacker.example.test/oauth',
+        ]);
+    }
+
+    public function test_it_rejects_disabled_tls_verification(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new GigaChatProvider([
+            ...$this->config(),
+            'verify_ssl' => false,
+        ]);
+    }
+
     private function provider(): GigaChatProvider
     {
-        return new GigaChatProvider([
-            'auth_url' => 'https://auth.example/oauth',
-            'api_url' => 'https://api.example/v1',
+        return new GigaChatProvider($this->config());
+    }
+
+    /** @return array<string, mixed> */
+    private function config(): array
+    {
+        return [
+            'auth_url' => 'https://ngw.devices.sberbank.ru:9443/api/v2/oauth',
+            'api_url' => 'https://api.giga.chat/v1',
             'auth_key' => 'test-key',
             'client_id' => null,
             'client_secret' => null,
@@ -206,6 +235,6 @@ final class GigaChatProviderTest extends TestCase
             'connect_timeout' => 1,
             'max_attempts' => 1,
             'verify_ssl' => true,
-        ]);
+        ];
     }
 }

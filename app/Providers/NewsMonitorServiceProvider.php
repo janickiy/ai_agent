@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\User;
-use App\NewsMonitor\AI\Contracts\AIProvider;
-use App\NewsMonitor\AI\Providers\GigaChatProvider;
-use App\NewsMonitor\AI\Providers\RuleBasedAIProvider;
-use App\NewsMonitor\Contracts\HttpFetcher;
-use App\NewsMonitor\Services\SafeHttpClient;
+use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
+use App\Modules\NewsMonitor\AI\Providers\GigaChatProvider;
+use App\Modules\NewsMonitor\AI\Providers\OpenAIProvider;
+use App\Modules\NewsMonitor\AI\Providers\RuleBasedAIProvider;
+use App\Modules\NewsMonitor\AI\Providers\YandexGPTProvider;
+use App\Modules\NewsMonitor\Contracts\HttpFetcher;
+use App\Modules\NewsMonitor\Services\AISettings;
+use App\Modules\NewsMonitor\Services\SafeHttpClient;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
@@ -20,12 +23,15 @@ final class NewsMonitorServiceProvider extends ServiceProvider
     {
         $this->app->bind(HttpFetcher::class, SafeHttpClient::class);
 
-        $this->app->singleton(AIProvider::class, function (): AIProvider {
-            $provider = (string) config('ai.default');
+        $this->app->bind(AIProvider::class, function (): AIProvider {
+            $settings = app(AISettings::class);
+            $provider = $settings->provider();
 
             return match ($provider) {
                 'rules' => new RuleBasedAIProvider,
-                'gigachat' => new GigaChatProvider((array) config('ai.providers.gigachat')),
+                'gigachat' => new GigaChatProvider($settings->gigachatConfig()),
+                'yandexgpt' => new YandexGPTProvider($settings->yandexgptConfig()),
+                'openai' => new OpenAIProvider($settings->openaiConfig()),
                 default => throw new InvalidArgumentException("Unsupported AI provider: {$provider}"),
             };
         });

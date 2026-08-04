@@ -3,7 +3,7 @@
 @section('title', 'Журнал и ошибки')
 
 @section('content')
-@php($logsTable = \App\NewsMonitor\Support\NewsTables::name('processing_logs'))
+@php($logsTable = \App\Modules\NewsMonitor\Support\NewsTables::name('processing_logs'))
 <div class="row g-3 mb-3">
     @foreach([
         ['label' => 'Событий сегодня', 'value' => $summary['total'], 'class' => 'primary'],
@@ -38,8 +38,8 @@
                 <label class="form-label" for="log-status">Статус</label>
                 <select class="form-select" id="log-status">
                     <option value="">Все статусы</option>
-                    @foreach($statuses as $value => $status)
-                    <option value="{{ $value }}">{{ $status['label'] }}</option>
+                    @foreach($statuses as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
             </div>

@@ -10,7 +10,8 @@
         "laravel/framework": "^13.8",
         "laravel/horizon": "^5.48",
         "laravel/tinker": "^3.0",
-        "yajra/laravel-datatables-oracle": "^13.0"
+        "yajra/laravel-datatables-oracle": "^13.0",
+        "ext-dom": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
