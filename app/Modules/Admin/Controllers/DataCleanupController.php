@@ -15,11 +15,20 @@ use Illuminate\Support\Facades\Queue;
 
 final class DataCleanupController extends Controller
 {
+    /**
+     * Получает репозиторий очистки мониторинговых данных и сервис аудита операции.
+     */
     public function __construct(
         private readonly ContentCleanupRepository $content,
         private readonly AuditLogger $audit,
     ) {}
 
+    /**
+     * Удаляет накопленные материалы, публикации и журналы обработки по запросу администратора.
+     *
+     * Операция выполняется транзакционно, записывается в аудит и очищает очередь анализа,
+     * когда приложение использует Redis в качестве драйвера очередей.
+     */
     public function __invoke(Request $request): RedirectResponse
     {
         Gate::authorize('purge-content');

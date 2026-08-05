@@ -12,8 +12,16 @@ use Illuminate\View\View;
 
 final class ProcessingLogController extends Controller
 {
+    /**
+     * Получает read-репозиторий, через который собирается сводка журнала обработки.
+     */
     public function __construct(private readonly AdminReadRepository $adminReads) {}
 
+    /**
+     * Открывает страницу журнала и передаёт ей варианты этапов, статусов и статистику за день.
+     *
+     * Начало дня переводится из часового пояса интерфейса в UTC для корректной фильтрации БД.
+     */
     public function __invoke(): View
     {
         $displayTimezone = (string) config('app.display_timezone');

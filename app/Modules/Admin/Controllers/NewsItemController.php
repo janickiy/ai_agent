@@ -14,7 +14,10 @@ use Illuminate\View\View;
 final class NewsItemController extends Controller
 {
     /**
-     * @return View
+     * Открывает страницу найденных материалов.
+     *
+     * Содержимое таблицы загружается отдельным AJAX-запросом, поэтому метод отвечает
+     * только за отображение административного интерфейса.
      */
     public function index(): View
     {
@@ -22,8 +25,9 @@ final class NewsItemController extends Controller
     }
 
     /**
-     * @param SourceItem $item
-     * @return RedirectResponse
+     * Повторно ставит выбранный материал в очередь анализа после проверки полномочий.
+     *
+     * Метод нужен для ручного восстановления обработки материала после временной ошибки.
      */
     public function retry(SourceItem $item): RedirectResponse
     {

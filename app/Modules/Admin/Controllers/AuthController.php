@@ -12,11 +12,18 @@ use Illuminate\View\View;
 
 final class AuthController extends Controller
 {
+    /**
+     * Отображает форму входа для неавторизованного пользователя админ-панели.
+     */
     public function create(): View
     {
         return view('admin.auth.login');
     }
 
+    /**
+     * Проверяет учётные данные, создаёт авторизованную сессию и дополнительно
+     * запрещает вход отключённым пользователям либо пользователям без доступа к панели.
+     */
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
@@ -36,6 +43,10 @@ final class AuthController extends Controller
         return redirect()->intended(route('admin.dashboard'));
     }
 
+    /**
+     * Завершает административную сессию, инвалидирует её данные и обновляет CSRF-токен,
+     * чтобы прежняя сессия не могла использоваться повторно.
+     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::logout();
