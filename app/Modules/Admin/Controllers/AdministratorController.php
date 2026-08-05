@@ -7,9 +7,9 @@ namespace App\Modules\Admin\Controllers;
 use App\DTO\Admin\AdministratorData;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Modules\NewsMonitor\Services\AuditLogger;
 use App\Modules\Admin\Repositories\AdministratorRepository;
 use App\Modules\Admin\Requests\AdministratorRequest;
+use App\Modules\NewsMonitor\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,15 +19,19 @@ use Illuminate\View\View;
 
 final class AdministratorController extends Controller
 {
+    /**
+     * Получает репозиторий учётных записей и сервис аудита, через которые контроллер
+     * выполняет изменения без прямой работы с моделями и журналом аудита.
+     */
     public function __construct(
         private readonly AdministratorRepository $administrators,
-        private readonly AuditLogger             $audit,
-    )
-    {
-    }
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
-     * @return View
+     * Открывает страницу управления администраторами после проверки соответствующего права.
+     *
+     * Сами строки списка загружаются через серверный DataTable-эндпоинт.
      */
     public function index(): View
     {
@@ -37,7 +41,10 @@ final class AdministratorController extends Controller
     }
 
     /**
-     * @return View
+     * Отображает форму создания новой административной учётной записи.
+     *
+     * Проверка Gate не позволяет пользователям без права управления администраторами
+     * получить доступ к форме.
      */
     public function create(): View
     {
@@ -47,8 +54,9 @@ final class AdministratorController extends Controller
     }
 
     /**
-     * @param AdministratorRequest $request
-     * @return RedirectResponse
+     * Создаёт административную учётную запись из валидированного DTO и фиксирует
+     * результат операции в журнале аудита в рамках одной транзакции.
+     *
      * @throws \Throwable
      */
     public function store(AdministratorRequest $request): RedirectResponse
@@ -70,6 +78,12 @@ final class AdministratorController extends Controller
         return redirect()->route('admin.administrators.index')->with('status', 'Администратор добавлен.');
     }
 
+    /**
+     * Отображает форму редактирования существующего администратора.
+     *
+     * Дополнительная проверка гарантирует, что переданная учётная запись действительно
+     * относится к администраторам, а не к другому типу пользователя.
+     */
     public function edit(User $administrator): View
     {
         Gate::authorize('manage-administrators');
@@ -78,12 +92,18 @@ final class AdministratorController extends Controller
         return view('admin.administrators.edit', ['administrator' => $administrator]);
     }
 
+    /**
+     * Обновляет административную учётную запись и записывает изменения в аудит.
+     *
+     * Метод запрещает отключать себя и последнего активного администратора,
+     * чтобы не оставить систему без доступной административной учётной записи.
+     */
     public function update(AdministratorRequest $request, User $administrator): RedirectResponse
     {
         $this->ensureAdministrator($administrator);
         $values = $request->validated();
 
-        if ($request->user()->is($administrator) && !$values['is_active']) {
+        if ($request->user()->is($administrator) && ! $values['is_active']) {
             return back()->withErrors([
                 'administrator' => 'Нельзя отключить собственную учетную запись.',
             ])->withInput();
@@ -94,7 +114,7 @@ final class AdministratorController extends Controller
             $locked = $this->administrators->lockForUpdate($administrator);
             if (
                 $locked->is_active
-                && !$values['is_active']
+                && ! $values['is_active']
                 && $activeCount <= 1
             ) {
                 throw ValidationException::withMessages([
@@ -120,6 +140,11 @@ final class AdministratorController extends Controller
         return redirect()->route('admin.administrators.index')->with('status', 'Администратор обновлён.');
     }
 
+    /**
+     * Удаляет выбранного администратора и сохраняет прежнее состояние в журнале аудита.
+     *
+     * Собственная учётная запись и последний активный администратор защищены от удаления.
+     */
     public function destroy(Request $request, User $administrator): RedirectResponse
     {
         Gate::authorize('manage-administrators');
@@ -155,6 +180,10 @@ final class AdministratorController extends Controller
         return redirect()->route('admin.administrators.index')->with('status', 'Администратор удалён.');
     }
 
+    /**
+     * Проверяет роль переданной учётной записи и возвращает HTTP 404 для пользователя,
+     * который не является администратором.
+     */
     private function ensureAdministrator(User $administrator): void
     {
         abort_unless($administrator->isAdministrator(), 404);

@@ -8,6 +8,8 @@ use App\Enums\ProcessingStage;
 use App\Enums\ProcessingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\Admin\Repositories\AdministratorRepository;
+use App\Modules\Admin\Repositories\AdminReadRepository;
 use App\Modules\NewsMonitor\Models\NewsCategory;
 use App\Modules\NewsMonitor\Models\ProcessingLog;
 use App\Modules\NewsMonitor\Models\PublicationPost;
@@ -15,8 +17,6 @@ use App\Modules\NewsMonitor\Models\Source;
 use App\Modules\NewsMonitor\Models\SourceItem;
 use App\Modules\NewsMonitor\Repositories\Catalog\NewsCategoryRepository;
 use App\Modules\NewsMonitor\Repositories\Catalog\SourceRepository;
-use App\Modules\Admin\Repositories\AdministratorRepository;
-use App\Modules\Admin\Repositories\AdminReadRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +27,10 @@ use Yajra\DataTables\Facades\DataTables;
 
 final class DataTableController extends Controller
 {
+    /**
+     * Получает специализированные репозитории, которые строят серверные запросы
+     * для всех таблиц административной панели.
+     */
     public function __construct(
         private readonly NewsCategoryRepository $categories,
         private readonly SourceRepository $sources,
@@ -61,6 +65,10 @@ final class DataTableController extends Controller
     ];
 
     /**
+     * Возвращает JSON для таблицы тематик с серверным поиском по названию и коду.
+     *
+     * Метод также форматирует ключевые слова и добавляет HTML-действия для каждой строки.
+     *
      * @throws Exception
      */
     public function categories(): JsonResponse
@@ -89,6 +97,10 @@ final class DataTableController extends Controller
     }
 
     /**
+     * Возвращает JSON для таблицы источников и визуально выделяет отключённые записи.
+     *
+     * В ответ добавляется колонка доступных пользователю действий над источником.
+     *
      * @throws Exception
      */
     public function sources(): JsonResponse
@@ -109,6 +121,11 @@ final class DataTableController extends Controller
     }
 
     /**
+     * Возвращает отфильтрованный JSON-список найденных материалов.
+     *
+     * Метод проверяет фильтр статуса, форматирует даты и добавляет классы статусов
+     * и действия, необходимые интерфейсу DataTables.
+     *
      * @throws Exception
      */
     public function items(Request $request): JsonResponse
@@ -157,6 +174,9 @@ final class DataTableController extends Controller
     }
 
     /**
+     * Возвращает JSON для таблицы готовых публикаций с серверным поиском,
+     * форматированием дат и объединением хештегов в отображаемую строку.
+     *
      * @throws Exception
      */
     public function posts(): JsonResponse
@@ -193,6 +213,11 @@ final class DataTableController extends Controller
     }
 
     /**
+     * Возвращает отфильтрованный журнал обработки в формате DataTables.
+     *
+     * Метод валидирует этап, статус и период, переводит даты в часовой пояс интерфейса
+     * и добавляет человекочитаемые подписи и CSS-классы перечислений.
+     *
      * @throws Exception
      */
     public function logs(Request $request): JsonResponse
@@ -245,6 +270,10 @@ final class DataTableController extends Controller
     }
 
     /**
+     * Возвращает JSON для таблицы администраторов после проверки права управления ими.
+     *
+     * Для каждой учётной записи в ответ добавляется HTML-колонка доступных действий.
+     *
      * @throws Exception
      */
     public function administrators(): JsonResponse
@@ -265,6 +294,12 @@ final class DataTableController extends Controller
             ->toJson();
     }
 
+    /**
+     * Преобразует дату из UTC в часовой пояс интерфейса и форматирует её для таблицы.
+     *
+     * Пустая дата отображается типографским прочерком, а флаг позволяет включить секунды
+     * для подробного журнала обработки.
+     */
     private function date(mixed $date, bool $withSeconds = false): string
     {
         if ($date === null) {

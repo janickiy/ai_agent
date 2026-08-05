@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\NewsMonitor\Models;
 
+/**
+ * Представляет таблицу `analysis_item_analyses` с результатами анализа исходных материалов.
+ *
+ * Таблица хранит категорию и актуальность новости, признаки рекламы, оценки уверенности,
+ * хештеги, сущности, AI-провайдера, модель, версию промпта, метаданные решения и время проверки.
+ */
 final class ItemAnalysis extends NewsModel
 {
     protected static string $newsTable = 'analyses';

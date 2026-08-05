@@ -27,8 +27,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
+/**
+ * Координирует полный конвейер обработки одного найденного новостного материала.
+ *
+ * Сервис загружает и извлекает статью, выполняет AI-анализ, проверяет актуальность
+ * и дубли, формирует готовую публикацию и журналирует каждый этап обработки.
+ */
 final class NewsPipeline
 {
+    /**
+     * Получает все специализированные сервисы и репозитории, необходимые для прохождения
+     * материала от загрузки страницы до готового поста и технического журнала.
+     */
     public function __construct(
         private readonly HttpFetcher $http,
         private readonly ArticleExtractor $extractor,
@@ -42,6 +52,12 @@ final class NewsPipeline
         private readonly ProcessingLogRepository $processingLogs,
     ) {}
 
+    /**
+     * Последовательно обрабатывает материал и возвращает готовую публикацию либо `null` при отклонении.
+     *
+     * Метод идемпотентен для уже опубликованного материала, обновляет состояния после каждого этапа,
+     * сохраняет решения анализа и дубликатов, а необработанные исключения журналирует и пробрасывает выше.
+     */
     public function process(SourceItem $item): ?PublicationPost
     {
         if ($existing = $this->publicationPosts->findBySourceItemId((int) $item->getKey())) {
@@ -252,6 +268,11 @@ final class NewsPipeline
     }
 
     /**
+     * Ищет точный дубликат по хешам, а затем семантически сравнивает подходящие материалы.
+     *
+     * Точное совпадение не требует обращения к AI, а семантические кандидаты ограничиваются
+     * той же категорией и близким временным диапазоном для сокращения числа запросов.
+     *
      * @return array{item: SourceItem, method: string, similarity: float, algorithm: string}|null
      */
     private function findDuplicate(SourceItem $item, int $categoryId): ?array
@@ -295,6 +316,11 @@ final class NewsPipeline
         return null;
     }
 
+    /**
+     * Переводит материал в заданный статус отклонения, сохраняет код причины и журналирует решение.
+     *
+     * Возвращаемый `null` позволяет вызывающему методу сразу завершить конвейер.
+     */
     private function reject(SourceItem $item, string $correlationId, string $status, string $reason): null
     {
         $item = $this->sourceItems->update($item, SourceItemData::fromArray([
@@ -306,13 +332,22 @@ final class NewsPipeline
         return null;
     }
 
+    /**
+     * Проверяет, входит ли дата публикации в настроенное окно актуальности и не находится далеко в будущем.
+     */
     private function isActual(CarbonInterface $date): bool
     {
         return $date->greaterThanOrEqualTo(now()->utc()->subHours($this->settings->maxNewsAgeHours()))
             && $date->lessThanOrEqualTo(now()->utc()->addHour());
     }
 
-    /** @param list<string> $hashtags @return list<string> */
+    /**
+     * Нормализует хештеги AI, добавляет обязательный тег категории, удаляет повторы
+     * и ограничивает результат семью значениями для готовой публикации.
+     *
+     * @param  list<string>  $hashtags
+     * @return list<string>
+     */
     private function hashtags(array $hashtags, ?NewsCategory $category): array
     {
         $values = array_filter(array_map(static function (string $hashtag): string {
@@ -327,6 +362,11 @@ final class NewsPipeline
         return array_slice(array_values(array_unique($values)), 0, 7);
     }
 
+    /**
+     * Возвращает URL изображения только после SSRF-проверки его публичной доступности.
+     *
+     * Небезопасное или некорректное изображение отбрасывается, не прерывая обработку всей статьи.
+     */
     private function safeImageUrl(?string $url): ?string
     {
         if ($url === null || $url === '') {
@@ -341,12 +381,21 @@ final class NewsPipeline
         }
     }
 
-    /** @param array<string, string> $headers @return array<string, string> */
+    /**
+     * Оставляет только безопасные диагностические HTTP-заголовки для метаданных извлечения.
+     *
+     * @param  array<string, string>  $headers
+     * @return array<string, string>
+     */
     private function safeHeaders(array $headers): array
     {
         return array_intersect_key($headers, array_flip(['Content-Type', 'Last-Modified', 'ETag']));
     }
 
+    /**
+     * Сохраняет унифицированное событие этапа конвейера с длительностью, причиной,
+     * ошибкой, активным AI-провайдером и ссылками на связанные сущности.
+     */
     private function log(
         SourceItem $item,
         string $correlationId,

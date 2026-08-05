@@ -15,14 +15,28 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use Throwable;
 
+/**
+ * Извлекает структурированные данные новости из загруженного HTML-документа.
+ *
+ * Сервис выбирает заголовок, описание, текст, изображение, канонический URL и дату
+ * из метатегов, JSON-LD и семантических элементов, после чего нормализует результат.
+ */
 final class ArticleExtractor
 {
+    /**
+     * Получает сервисы канонизации URL и технической очистки извлечённого текста.
+     */
     public function __construct(
         private readonly UrlCanonicalizer $canonicalizer,
         private readonly ContentNormalizer $normalizer,
     ) {}
 
     /**
+     * Разбирает HTML статьи и возвращает единый DTO извлечённого материала.
+     *
+     * Недостающие заголовок, описание и дата могут быть взяты из данных RSS/Atom,
+     * а относительные ссылки преобразуются в абсолютные относительно фактического URL страницы.
+     *
      * @param  array<string, mixed>  $fallback
      */
     public function extract(string $html, string $fetchedUrl, array $fallback = []): ExtractedArticle
@@ -80,6 +94,11 @@ final class ArticleExtractor
         );
     }
 
+    /**
+     * Ищет дату публикации сначала в JSON-LD, затем в стандартных метатегах и HTML-атрибутах.
+     *
+     * Такой порядок повышает точность и одновременно поддерживает страницы без schema.org-разметки.
+     */
     private function publishedAt(DOMXPath $xpath): ?CarbonImmutable
     {
         foreach ($xpath->query("//script[@type='application/ld+json']") ?: [] as $node) {
@@ -107,6 +126,11 @@ final class ArticleExtractor
         return null;
     }
 
+    /**
+     * Рекурсивно находит поле `datePublished` внутри произвольной структуры JSON-LD.
+     *
+     * Рекурсия нужна для поддержки массивов графов и вложенных schema.org-объектов.
+     */
     private function findDatePublished(mixed $data): ?string
     {
         if (! is_array($data)) {
@@ -124,6 +148,11 @@ final class ArticleExtractor
         return null;
     }
 
+    /**
+     * Преобразует строковое представление даты в неизменяемое UTC-значение.
+     *
+     * Некорректная или пустая дата возвращается как `null`, позволяя продолжить поиск fallback-значения.
+     */
     private function parseDate(mixed $value): ?CarbonImmutable
     {
         if (! is_string($value) || trim($value) === '') {
@@ -136,6 +165,9 @@ final class ArticleExtractor
         }
     }
 
+    /**
+     * Извлекает содержимое метатега по имени атрибута и его значению без учёта регистра.
+     */
     private function meta(DOMXPath $xpath, string $attribute, string $value): string
     {
         return $this->attribute(
@@ -149,6 +181,11 @@ final class ArticleExtractor
         );
     }
 
+    /**
+     * Возвращает значение HTML-атрибута первого элемента, соответствующего XPath-запросу.
+     *
+     * Пустая строка используется как безопасный результат при отсутствии элемента.
+     */
     private function attribute(DOMXPath $xpath, string $query, string $attribute): string
     {
         $node = $xpath->query($query)?->item(0);
@@ -156,11 +193,19 @@ final class ArticleExtractor
         return $node instanceof DOMElement ? trim($node->getAttribute($attribute)) : '';
     }
 
+    /**
+     * Возвращает очищенное текстовое содержимое первого узла XPath-запроса.
+     */
     private function text(DOMXPath $xpath, string $query): string
     {
         return trim($xpath->query($query)?->item(0)?->textContent ?? '');
     }
 
+    /**
+     * Преобразует относительный URL ресурса в абсолютный относительно адреса статьи.
+     *
+     * Если URI невозможно разобрать, исходное значение сохраняется для последующей валидации.
+     */
     private function resolveUrl(string $base, string $candidate): string
     {
         try {

@@ -7,17 +7,23 @@ namespace App\Modules\Admin\Controllers;
 use App\DTO\Settings\AgentSettingsData;
 use App\DTO\Settings\AISettingsData;
 use App\Http\Controllers\Controller;
+use App\Modules\Admin\Requests\SettingsRequest;
 use App\Modules\NewsMonitor\Models\SystemSetting;
 use App\Modules\NewsMonitor\Services\AgentSettings;
 use App\Modules\NewsMonitor\Services\AISettings;
 use App\Modules\NewsMonitor\Services\AuditLogger;
-use App\Modules\Admin\Requests\SettingsRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 final class SettingsController extends Controller
 {
+    /**
+     * Отображает единую форму настроек агента и подключений AI-провайдеров.
+     *
+     * В представление передаются публичные значения, признаки сохранённых секретов
+     * и полный список провайдеров без раскрытия конфиденциальных реквизитов.
+     */
     public function edit(AgentSettings $settings, AISettings $aiSettings): View
     {
         return view('admin.settings.edit', [
@@ -28,6 +34,11 @@ final class SettingsController extends Controller
     }
 
     /**
+     * Сохраняет общие настройки агента, параметры AI-провайдеров и изменения реквизитов доступа.
+     *
+     * Метод преобразует валидированные данные в DTO, выполняет обновление транзакционно
+     * и фиксирует безопасные снимки настроек в аудите без записи секретов открытым текстом.
+     *
      * @throws \Throwable
      */
     public function update(

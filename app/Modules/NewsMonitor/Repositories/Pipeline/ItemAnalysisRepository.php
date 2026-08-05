@@ -8,17 +8,27 @@ use App\DTO\Pipeline\ItemAnalysisData;
 use App\Modules\NewsMonitor\Models\ItemAnalysis;
 use App\Repositories\BaseRepository;
 
-/** @extends BaseRepository<ItemAnalysis, ItemAnalysisData> */
+/**
+ * Управляет сохранением результатов AI-анализа исходных материалов.
+ *
+ * Репозиторий изолирует запросы к таблице анализов и обеспечивает идемпотентную
+ * запись одного актуального результата для каждого материала.
+ *
+ * @extends BaseRepository<ItemAnalysis, ItemAnalysisData>
+ */
 final class ItemAnalysisRepository extends BaseRepository
 {
+
     public function __construct(ItemAnalysis $model)
     {
         parent::__construct($model);
     }
 
     /**
-     * @param ItemAnalysisData $dto
-     * @return ItemAnalysis
+     * Создаёт или обновляет единственный результат анализа для указанного материала.
+     *
+     * Upsert нужен для безопасного повторного запуска конвейера без появления
+     * нескольких записей анализа для одного исходного материала.
      */
     public function upsertForSourceItem(ItemAnalysisData $dto): ItemAnalysis
     {
@@ -34,12 +44,21 @@ final class ItemAnalysisRepository extends BaseRepository
         return $analysis;
     }
 
+    /**
+     * Указывает базовому репозиторию модель, с которой разрешено выполнять операции.
+     *
+     * @return class-string<ItemAnalysis>
+     */
     protected function modelClass(): string
     {
         return ItemAnalysis::class;
     }
 
-    /** @return non-empty-list<class-string<ItemAnalysisData>> */
+    /**
+     * Определяет DTO, допустимый для операций записи результатов анализа.
+     *
+     * @return non-empty-list<class-string<ItemAnalysisData>>
+     */
     protected function dtoClasses(): array
     {
         return [ItemAnalysisData::class];

@@ -14,6 +14,48 @@ final class SourceManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_administrator_can_create_and_toggle_a_source(): void
+    {
+        $this->seed();
+        $administrator = User::factory()->create([
+            'role' => 'administrator',
+            'is_active' => true,
+            'admin_access' => true,
+        ]);
+
+        $this->actingAs($administrator)
+            ->post(route('admin.sources.store'), [
+                'name' => 'Тестовый источник',
+                'domain' => 'source-create.example.test',
+                'type' => 'rss',
+                'source_class' => 'industry_media',
+                'trust_score' => 80,
+                'base_url' => 'https://source-create.example.test',
+                'feed_url' => 'https://source-create.example.test/feed.xml',
+                'is_active' => true,
+                'is_allowed' => true,
+                'is_trusted' => false,
+                'poll_interval_minutes' => 30,
+                'request_limit' => 20,
+                'timeout_seconds' => 10,
+                'max_attempts' => 3,
+                'category_ids' => [],
+            ])
+            ->assertRedirect(route('admin.sources.index'))
+            ->assertSessionHas('status', 'Источник добавлен.');
+
+        $source = Source::query()->where('domain', 'source-create.example.test')->firstOrFail();
+        self::assertTrue($source->is_active);
+
+        $this->actingAs($administrator)
+            ->from(route('admin.sources.index'))
+            ->patch(route('admin.sources.toggle', $source))
+            ->assertRedirect(route('admin.sources.index'))
+            ->assertSessionHas('status', 'Состояние источника изменено.');
+
+        self::assertFalse($source->fresh()->is_active);
+    }
+
     public function test_administrator_can_edit_and_delete_an_unused_source(): void
     {
         $this->seed();

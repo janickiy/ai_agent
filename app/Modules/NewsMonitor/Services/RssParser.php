@@ -11,9 +11,21 @@ use DOMElement;
 use DOMNode;
 use DOMXPath;
 
+/**
+ * Разбирает RSS- и Atom-ленты в единый список найденных новостных материалов.
+ *
+ * Сервис абстрагирует различия форматов лент и извлекает только данные обнаружения,
+ * необходимые для последующей загрузки и полного разбора страницы статьи.
+ */
 final class RssParser
 {
-    /** @return list<DiscoveredArticle> */
+    /**
+     * Преобразует XML RSS/Atom в DTO найденных статей, пропуская элементы без ссылки.
+     *
+     * Заголовок, описание, дата и GUID сохраняются как fallback-метаданные для ArticleExtractor.
+     *
+     * @return list<DiscoveredArticle>
+     */
     public function parse(string $xml): array
     {
         $document = new DOMDocument;
@@ -55,6 +67,11 @@ final class RssParser
         return $results;
     }
 
+    /**
+     * Извлекает текст непосредственного дочернего элемента независимо от XML namespace.
+     *
+     * Метод унифицирует чтение одноимённых полей RSS и Atom.
+     */
     private function childText(DOMXPath $xpath, DOMNode $node, string $name): string
     {
         return trim($xpath->query('./*[local-name()="'.$name.'"]', $node)?->item(0)?->textContent ?? '');

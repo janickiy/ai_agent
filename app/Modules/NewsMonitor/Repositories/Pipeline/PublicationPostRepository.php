@@ -8,7 +8,14 @@ use App\DTO\Pipeline\PublicationPostData;
 use App\Modules\NewsMonitor\Models\PublicationPost;
 use App\Repositories\BaseRepository;
 
-/** @extends BaseRepository<PublicationPost, PublicationPostData> */
+/**
+ * Управляет публикациями, подготовленными из принятых новостных материалов.
+ *
+ * Репозиторий инкапсулирует поиск и идемпотентное создание поста, чтобы один
+ * исходный материал не породил несколько готовых публикаций.
+ *
+ * @extends BaseRepository<PublicationPost, PublicationPostData>
+ */
 final class PublicationPostRepository extends BaseRepository
 {
     public function __construct(PublicationPost $model)
@@ -17,8 +24,9 @@ final class PublicationPostRepository extends BaseRepository
     }
 
     /**
-     * @param int $sourceItemId
-     * @return PublicationPost|null
+     * Находит готовую публикацию по идентификатору исходного материала.
+     *
+     * Метод используется для проверки идемпотентности перед повторным формированием поста.
      */
     public function findBySourceItemId(int $sourceItemId): ?PublicationPost
     {
@@ -29,8 +37,9 @@ final class PublicationPostRepository extends BaseRepository
     }
 
     /**
-     * @param PublicationPostData $dto
-     * @return PublicationPost
+     * Возвращает существующую публикацию материала либо атомарно создаёт её из DTO.
+     *
+     * Уникальность по исходному материалу предотвращает повторную публикацию новости.
      */
     public function firstOrCreateForSourceItem(PublicationPostData $dto): PublicationPost
     {
@@ -46,12 +55,21 @@ final class PublicationPostRepository extends BaseRepository
         return $post;
     }
 
+    /**
+     * Указывает базовому репозиторию модель публикации для проверки типов и CRUD-операций.
+     *
+     * @return class-string<PublicationPost>
+     */
     protected function modelClass(): string
     {
         return PublicationPost::class;
     }
 
-    /** @return non-empty-list<class-string<PublicationPostData>> */
+    /**
+     * Определяет DTO, разрешённый для записи подготовленных публикаций.
+     *
+     * @return non-empty-list<class-string<PublicationPostData>>
+     */
     protected function dtoClasses(): array
     {
         return [PublicationPostData::class];

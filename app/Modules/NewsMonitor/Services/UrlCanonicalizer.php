@@ -6,6 +6,12 @@ namespace App\Modules\NewsMonitor\Services;
 
 use App\Modules\NewsMonitor\Exceptions\UnsafeUrlException;
 
+/**
+ * Приводит URL новостных материалов к устойчивому каноническому представлению.
+ *
+ * Сервис нормализует схему, хост, порт, путь и параметры запроса, удаляя рекламные
+ * метки. Полученный URL используется для хеширования и защиты от повторного сбора статьи.
+ */
 final class UrlCanonicalizer
 {
     private const TRACKING_PARAMETERS = [
@@ -13,6 +19,15 @@ final class UrlCanonicalizer
         'yclid', 'gclid', 'fbclid', 'from', 'ref',
     ];
 
+    /**
+     * Проверяет абсолютный HTTP(S)-адрес и возвращает его каноническую форму.
+     *
+     * Метод удаляет стандартные порты, завершающий слеш пути и tracking-параметры,
+     * а оставшиеся query-параметры сортирует для стабильного результата.
+     *
+     * @param string $url
+     * @return string
+     */
     public function canonicalize(string $url): string
     {
         $url = trim(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));

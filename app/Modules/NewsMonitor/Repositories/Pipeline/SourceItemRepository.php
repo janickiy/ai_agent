@@ -13,7 +13,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
-/** @extends BaseRepository<SourceItem, SourceItemData> */
+/**
+ * Управляет исходными материалами, найденными во внешних новостных источниках.
+ *
+ * Репозиторий отвечает за безопасное создание и обновление материалов, загрузку
+ * связей и поиск точных либо семантических кандидатов на дублирование.
+ *
+ * @extends BaseRepository<SourceItem, SourceItemData>
+ */
 final class SourceItemRepository extends BaseRepository
 {
     /** @var non-empty-list<string> */
@@ -25,12 +32,20 @@ final class SourceItemRepository extends BaseRepository
         'discovered_at',
     ];
 
+    /**
+     * Инициализирует репозиторий моделью исходного материала.
+     */
     public function __construct(SourceItem $model)
     {
         parent::__construct($model);
     }
 
     /**
+     * Создаёт исходный материал только из подходящего DTO с обязательными полями обнаружения.
+     *
+     * Дополнительная проверка не допускает сохранение материала без источника,
+     * канонического URL, его хеша и времени обнаружения.
+     *
      * @param DataTransferObject $dto
      * @return SourceItem
      */
@@ -47,6 +62,10 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Обновляет исходный материал через типобезопасную операцию базового репозитория.
+     *
+     * Конкретный тип результата сохранён в сигнатуре для удобства сервисов конвейера.
+     *
      * @param Model $model
      * @param DataTransferObject $dto
      * @return SourceItem
@@ -60,6 +79,10 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Находит материал по хешу канонического URL либо создаёт его из данных обнаружения.
+     *
+     * Метод делает повторный обход одной ленты идемпотентным и не создаёт дубликаты URL.
+     *
      * @param SourceItemData $dto
      * @return SourceItem
      */
@@ -80,6 +103,10 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Загружает материал вместе с источником для выполнения фонового задания обработки.
+     *
+     * Возвращение `null` позволяет заданию безопасно завершиться, если запись была удалена.
+     *
      * @param int|string $id
      * @return SourceItem|null
      */
@@ -92,6 +119,9 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Гарантирует загрузку связи материала с источником без повторного запроса,
+     * если отношение уже было загружено вызывающим кодом.
+     *
      * @param SourceItem $item
      * @return SourceItem
      */
@@ -102,6 +132,15 @@ final class SourceItemRepository extends BaseRepository
         return $item->loadMissing('source');
     }
 
+    /**
+     * Ищет другой материал с тем же хешем канонического URL, исключая текущую запись.
+     *
+     * Метод выявляет URL-дубликаты при повторной нормализации уже сохранённого материала.
+     *
+     * @param int|string $excludedId
+     * @param string $hash
+     * @return SourceItem|null
+     */
     public function findOtherByCanonicalUrlHash(int|string $excludedId, string $hash): ?SourceItem
     {
         /** @var SourceItem|null $item */
@@ -114,6 +153,11 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Ищет ранее принятый материал с совпадающим хешем заголовка и описания либо полного текста.
+     *
+     * Текущий материал исключается, а поиск ограничивается уже принятыми или отмеченными
+     * дубликатами записями для надёжного определения оригинала.
+     *
      * @param int|string $excludedId
      * @param string $titleDescriptionHash
      * @param string $contentHash
@@ -140,6 +184,9 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Возвращает ограниченный набор принятых материалов той же категории и периода
+     * для более дорогого семантического сравнения через AI-провайдер.
+     *
      * @param int|string $excludedId
      * @param int $categoryId
      * @param CarbonInterface $from
@@ -165,12 +212,21 @@ final class SourceItemRepository extends BaseRepository
             ->get();
     }
 
+    /**
+     * Указывает базовому репозиторию модель исходного материала для проверки типов.
+     *
+     * @return class-string<SourceItem>
+     */
     protected function modelClass(): string
     {
         return SourceItem::class;
     }
 
-    /** @return non-empty-list<class-string<SourceItemData>> */
+    /**
+     * Определяет DTO, разрешённый для создания и обновления исходных материалов.
+     *
+     * @return non-empty-list<class-string<SourceItemData>>
+     */
     protected function dtoClasses(): array
     {
         return [SourceItemData::class];

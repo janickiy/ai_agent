@@ -18,6 +18,8 @@ final class NewsItemController extends Controller
      *
      * Содержимое таблицы загружается отдельным AJAX-запросом, поэтому метод отвечает
      * только за отображение административного интерфейса.
+     *
+     * @return View
      */
     public function index(): View
     {
@@ -28,6 +30,9 @@ final class NewsItemController extends Controller
      * Повторно ставит выбранный материал в очередь анализа после проверки полномочий.
      *
      * Метод нужен для ручного восстановления обработки материала после временной ошибки.
+     *
+     * @param SourceItem $item
+     * @return RedirectResponse
      */
     public function retry(SourceItem $item): RedirectResponse
     {

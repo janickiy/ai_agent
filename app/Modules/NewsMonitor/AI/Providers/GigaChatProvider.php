@@ -54,6 +54,9 @@ final class GigaChatProvider implements AIProvider
     /**
      * Классифицирует статью через GigaChat и повторяет запрос с сокращённым текстом,
      * если полный материал заблокирован или модель вернула некорректный JSON.
+     *
+     * @param ArticleAnalysisRequest $request
+     * @return ArticleAnalysisResult
      */
     public function analyzeArticle(ArticleAnalysisRequest $request): ArticleAnalysisResult
     {
@@ -119,7 +122,10 @@ final class GigaChatProvider implements AIProvider
 
     /**
      * Сравнивает статьи по GigaChat embeddings и при разрешённом fallback использует
-     * детерминированное сравнение, если внешний embedding API недоступен.
+     *  детерминированное сравнение, если внешний embedding API недоступен.
+     *
+     * @param ArticleComparisonRequest $request
+     * @return ArticleComparisonResult
      */
     public function compareArticles(ArticleComparisonRequest $request): ArticleComparisonResult
     {
@@ -175,9 +181,10 @@ final class GigaChatProvider implements AIProvider
      * Выполняет запрос к GigaChat Chat Completions со строгой JSON Schema и декодирует
      * структурированный ответ для вызывающего метода анализа.
      *
-     * @param  array<string, mixed>  $payload
-     * @param  array<string, mixed>  $schema
-     * @return array<string, mixed>
+     * @param string $instruction
+     * @param array $payload
+     * @param array $schema
+     * @return array
      */
     private function completeJson(string $instruction, array $payload, array $schema): array
     {
@@ -230,8 +237,11 @@ final class GigaChatProvider implements AIProvider
     }
 
     /**
-     * Определяет, имеет ли смысл повторить анализ без полного текста статьи или перейти
-     * на rule-based провайдер после блокировки контента либо ошибки JSON.
+     * Определяем, имеет ли смысл повторить анализ без полного текста статьи или перейти
+     *  на rule-based провайдер после блокировки контента либо ошибки JSON.
+     *
+     * @param AIProviderException $exception
+     * @return bool
      */
     private function shouldRetryArticleWithReducedPayload(AIProviderException $exception): bool
     {
@@ -244,8 +254,8 @@ final class GigaChatProvider implements AIProvider
     /**
      * Строит JSON Schema результата классификации с ограничением на известные категории.
      *
-     * @param  list<string>  $categoryCodes
-     * @return array<string, mixed>
+     * @param array $categoryCodes
+     * @return array
      */
     private function articleAnalysisSchema(array $categoryCodes): array
     {
@@ -355,6 +365,11 @@ final class GigaChatProvider implements AIProvider
 
     /**
      * Проверяет, что адрес авторизации или API соответствует официальному HTTPS-хосту и порту.
+     *
+     * @param string $key
+     * @param string $host
+     * @param int $port
+     * @return void
      */
     private function assertOfficialEndpoint(string $key, string $host, int $port): void
     {
@@ -408,8 +423,12 @@ final class GigaChatProvider implements AIProvider
         return (string) $this->config['model'];
     }
 
+
     /**
      * Ограничивает значение уверенности диапазоном от 0 до 1.
+     *
+     * @param mixed $value
+     * @return float
      */
     private function confidence(mixed $value): float
     {
@@ -419,7 +438,9 @@ final class GigaChatProvider implements AIProvider
     /**
      * Очищает, дедублицирует и ограничивает строковые списки из ответа модели.
      *
-     * @return list<string> Нормализованный список не более указанного количества элементов.
+     * @param mixed $value
+     * @param int $limit
+     * @return array
      */
     private function strings(mixed $value, int $limit): array
     {
@@ -435,8 +456,9 @@ final class GigaChatProvider implements AIProvider
     /**
      * Вычисляет косинусное сходство embedding-векторов для оценки близости двух статей.
      *
-     * @param  list<float>  $first
-     * @param  list<float>  $second
+     * @param array $first
+     * @param array $second
+     * @return float
      */
     private function cosine(array $first, array $second): float
     {

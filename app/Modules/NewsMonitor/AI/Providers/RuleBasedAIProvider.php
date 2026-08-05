@@ -22,9 +22,13 @@ final class RuleBasedAIProvider implements AIProvider
         return 'rules';
     }
 
+
     /**
      * Классифицирует статью без внешнего AI по ключевым словам категорий и рекламным маркерам;
      * используется как самостоятельный провайдер и безопасный fallback удалённых сервисов.
+     *
+     * @param ArticleAnalysisRequest $request
+     * @return ArticleAnalysisResult
      */
     public function analyzeArticle(ArticleAnalysisRequest $request): ArticleAnalysisResult
     {

@@ -191,6 +191,35 @@ final class GigaChatProviderTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_it_compares_articles_with_gigachat_embeddings(): void
+    {
+        Cache::flush();
+        Http::fakeSequence()
+            ->push(['access_token' => 'test-token'], 200)
+            ->push([
+                'data' => [[
+                    'embedding' => [1.0, 0.0],
+                ]],
+            ], 200)
+            ->push([
+                'data' => [[
+                    'embedding' => [0.8, 0.6],
+                ]],
+            ], 200);
+
+        $provider = $this->provider();
+        $result = $provider->compareArticles(new ArticleComparisonRequest(
+            'Строительство нового моста',
+            'Новый мост введён в эксплуатацию',
+        ));
+
+        self::assertSame('gigachat', $provider->code());
+        self::assertSame('gigachat', $result->provider);
+        self::assertSame('EmbeddingsGigaR', $result->model);
+        self::assertEqualsWithDelta(0.8, $result->similarity, 0.00001);
+        Http::assertSentCount(3);
+    }
+
     public function test_it_rejects_untrusted_api_endpoints_before_sending_credentials(): void
     {
         Http::fake();

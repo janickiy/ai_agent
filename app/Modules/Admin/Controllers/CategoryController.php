@@ -6,10 +6,10 @@ namespace App\Modules\Admin\Controllers;
 
 use App\DTO\Catalog\NewsCategoryData;
 use App\Http\Controllers\Controller;
+use App\Modules\Admin\Requests\CategoryRequest;
 use App\Modules\NewsMonitor\Models\NewsCategory;
 use App\Modules\NewsMonitor\Repositories\Catalog\NewsCategoryRepository;
 use App\Modules\NewsMonitor\Services\AuditLogger;
-use App\Modules\Admin\Requests\CategoryRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -18,15 +18,19 @@ use Illuminate\View\View;
 
 final class CategoryController extends Controller
 {
+    /**
+     * Получает репозиторий тематик и сервис аудита для выполнения CRUD-операций
+     * через выделенный слой доступа к данным.
+     */
     public function __construct(
         private readonly NewsCategoryRepository $categories,
-        private readonly AuditLogger            $audit,
-    )
-    {
-    }
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
-     * @return View
+     * Открывает страницу справочника тематик новостей.
+     *
+     * Строки списка загружаются через серверный DataTable-эндпоинт.
      */
     public function index(): View
     {
@@ -34,7 +38,7 @@ final class CategoryController extends Controller
     }
 
     /**
-     * @return View
+     * Отображает форму добавления тематики после проверки права на управление справочником.
      */
     public function create(): View
     {
@@ -44,8 +48,10 @@ final class CategoryController extends Controller
     }
 
     /**
-     * @param CategoryRequest $request
-     * @return RedirectResponse
+     * Создаёт тематику из валидированного DTO и записывает созданное состояние в аудит.
+     *
+     * Транзакция обеспечивает согласованность справочника и журнала аудита.
+     *
      * @throws \Throwable
      */
     public function store(CategoryRequest $request): RedirectResponse
@@ -68,8 +74,7 @@ final class CategoryController extends Controller
     }
 
     /**
-     * @param NewsCategory $category
-     * @return View
+     * Отображает форму редактирования выбранной тематики после проверки полномочий.
      */
     public function edit(NewsCategory $category): View
     {
@@ -79,9 +84,8 @@ final class CategoryController extends Controller
     }
 
     /**
-     * @param CategoryRequest $request
-     * @param NewsCategory $category
-     * @return RedirectResponse
+     * Обновляет тематику из валидированного DTO и сохраняет снимки до и после изменения в аудит.
+     *
      * @throws \Throwable
      */
     public function update(CategoryRequest $request, NewsCategory $category): RedirectResponse
@@ -106,8 +110,11 @@ final class CategoryController extends Controller
     }
 
     /**
-     * @param NewsCategory $category
-     * @return RedirectResponse
+     * Удаляет неиспользуемую тематику и регистрирует операцию в журнале аудита.
+     *
+     * Тематика, связанная с материалами, публикациями или подтемами, защищена от удаления,
+     * чтобы не нарушить ссылочную целостность данных.
+     *
      * @throws \Throwable
      */
     public function destroy(NewsCategory $category): RedirectResponse

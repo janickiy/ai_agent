@@ -15,6 +15,12 @@ use App\Modules\NewsMonitor\Repositories\Pipeline\SourceItemRepository;
 use Illuminate\Support\Str;
 use Throwable;
 
+/**
+ * Обходит настроенные RSS/Atom-источники и регистрирует новые материалы для обработки.
+ *
+ * Сервис отвечает за этап discovery: загрузку ленты, канонизацию ссылок, идемпотентное
+ * создание исходных материалов, постановку заданий в очередь и обновление состояния источника.
+ */
 final class SourceMonitor
 {
     public function __construct(
@@ -26,7 +32,19 @@ final class SourceMonitor
         private readonly ProcessingLogRepository $processingLogs,
     ) {}
 
-    /** @return array{sources: int, discovered: int, failed: int} */
+
+    /**
+     * Проверяет один или все доступные источники и возвращает статистику обхода.
+     *
+     * Новые ссылки сохраняются по уникальному каноническому хешу и ставятся в очередь анализа;
+     * успешный обход обновляет расписание, а ошибка отмечает источник и записывается в журнал.
+     * Флаг `force` позволяет игнорировать плановое время следующего опроса при ручном запуске.
+     *
+     * @param int|null $sourceId
+     * @param bool $force
+     * @return int[]
+     * @throws Throwable
+     */
     public function monitor(?int $sourceId = null, bool $force = false): array
     {
         $stats = ['sources' => 0, 'discovered' => 0, 'failed' => 0];

@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 final class AdminAccessTest extends TestCase
@@ -36,5 +37,29 @@ final class AdminAccessTest extends TestCase
         ]);
 
         $this->actingAs($user)->get('/admin')->assertForbidden();
+    }
+
+    public function test_active_administrator_can_login_and_logout(): void
+    {
+        $administrator = User::factory()->create([
+            'email' => 'admin-login@example.test',
+            'password' => Hash::make('SecurePassword2026'),
+            'role' => 'administrator',
+            'is_active' => true,
+            'admin_access' => true,
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => $administrator->email,
+            'password' => 'SecurePassword2026',
+        ])
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->assertAuthenticatedAs($administrator);
+
+        $this->post(route('logout'))
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
     }
 }

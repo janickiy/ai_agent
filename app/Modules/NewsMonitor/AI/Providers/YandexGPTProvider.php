@@ -37,6 +37,9 @@ final class YandexGPTProvider extends AbstractRemoteAIProvider
     /**
      * Передаёт статью в YandexGPT Chat Completions со схемой структурированного ответа
      * и преобразует результат в общий DTO классификации.
+     *
+     * @param ArticleAnalysisRequest $request
+     * @return ArticleAnalysisResult
      */
     public function analyzeArticle(ArticleAnalysisRequest $request): ArticleAnalysisResult
     {
@@ -94,6 +97,9 @@ final class YandexGPTProvider extends AbstractRemoteAIProvider
 
     /**
      * Строит embedding для каждой статьи и вычисляет косинусное семантическое сходство.
+     *
+     * @param ArticleComparisonRequest $request
+     * @return ArticleComparisonResult
      */
     public function compareArticles(ArticleComparisonRequest $request): ArticleComparisonResult
     {
@@ -110,7 +116,8 @@ final class YandexGPTProvider extends AbstractRemoteAIProvider
     /**
      * Запрашивает у Yandex AI Studio embedding одного текста и проверяет формат вектора.
      *
-     * @return list<float> Векторное представление переданного текста.
+     * @param string $text
+     * @return array
      */
     private function createEmbedding(string $text): array
     {

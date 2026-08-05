@@ -7,11 +7,11 @@ namespace App\Modules\Admin\Controllers;
 use App\DTO\Catalog\SourceData;
 use App\DTO\Catalog\SourceStatusData;
 use App\Http\Controllers\Controller;
+use App\Modules\Admin\Requests\SourceRequest;
 use App\Modules\NewsMonitor\Models\Source;
 use App\Modules\NewsMonitor\Repositories\Catalog\NewsCategoryRepository;
 use App\Modules\NewsMonitor\Repositories\Catalog\SourceRepository;
 use App\Modules\NewsMonitor\Services\AuditLogger;
-use App\Modules\Admin\Requests\SourceRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -20,6 +20,10 @@ use Illuminate\View\View;
 
 final class SourceController extends Controller
 {
+    /**
+     * Получает репозитории источников и тематик, а также сервис аудита,
+     * необходимые для управления каталогом новостных источников.
+     */
     public function __construct(
         private readonly SourceRepository $sources,
         private readonly NewsCategoryRepository $categories,
@@ -27,6 +31,10 @@ final class SourceController extends Controller
     ) {}
 
     /**
+     * Открывает страницу каталога источников.
+     *
+     * Строки списка загружаются через отдельный серверный DataTable-эндпоинт.
+     *
      * @return View
      */
     public function index(): View
@@ -35,6 +43,10 @@ final class SourceController extends Controller
     }
 
     /**
+     * Отображает форму создания источника с активными тематиками и вариантами класса источника.
+     *
+     * Доступ к форме разрешён только пользователю с правом управления источниками.
+     *
      * @return View
      */
     public function create(): View
@@ -47,6 +59,14 @@ final class SourceController extends Controller
         ]);
     }
 
+    /**
+     * Создаёт источник из валидированного DTO, синхронизирует его связи с тематиками
+     * через репозиторий и фиксирует итоговое состояние в журнале аудита.
+     *
+     * @param SourceRequest $request
+     * @return RedirectResponse
+     * @throws \Throwable
+     */
     public function store(SourceRequest $request): RedirectResponse
     {
         DB::transaction(function () use ($request): void {
@@ -65,6 +85,15 @@ final class SourceController extends Controller
         return redirect()->route('admin.sources.index')->with('status', 'Источник добавлен.');
     }
 
+    /**
+     * Отображает форму редактирования источника вместе с его тематиками
+     * и доступными классами источников.
+     */
+
+    /**
+     * @param Source $source
+     * @return View
+     */
     public function edit(Source $source): View
     {
         Gate::authorize('manage-sources');
@@ -76,6 +105,9 @@ final class SourceController extends Controller
         ]);
     }
 
+    /**
+     * Обновляет источник из валидированного DTO и записывает снимки до и после изменения в аудит.
+     */
     public function update(SourceRequest $request, Source $source): RedirectResponse
     {
         DB::transaction(function () use ($request, $source): void {
@@ -95,6 +127,11 @@ final class SourceController extends Controller
         return back()->with('status', 'Источник обновлён.');
     }
 
+    /**
+     * Переключает активность источника без изменения остальных настроек и регистрирует операцию.
+     *
+     * Метод нужен для оперативного включения или приостановки мониторинга отдельного источника.
+     */
     public function toggle(Source $source): RedirectResponse
     {
         Gate::authorize('manage-sources');
@@ -117,6 +154,11 @@ final class SourceController extends Controller
         return back()->with('status', 'Состояние источника изменено.');
     }
 
+    /**
+     * Удаляет источник, если для него ещё не накоплены материалы, и сохраняет операцию в аудит.
+     *
+     * Запрет удаления используемого источника защищает связанные данные мониторинга.
+     */
     public function destroy(Source $source): RedirectResponse
     {
         Gate::authorize('manage-sources');

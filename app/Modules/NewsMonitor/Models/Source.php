@@ -8,6 +8,12 @@ use App\Modules\NewsMonitor\Support\NewsTables;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Представляет таблицу `catalog_sources` с каталогом отслеживаемых RSS/Atom-источников.
+ *
+ * Таблица хранит адреса и тип ленты, класс и доверие источника, разрешения и активность,
+ * лимиты запросов, расписание опроса, текущее состояние и сведения о последней ошибке.
+ */
 final class Source extends NewsModel
 {
     protected static string $newsTable = 'sources';

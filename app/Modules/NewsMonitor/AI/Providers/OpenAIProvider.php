@@ -37,6 +37,9 @@ final class OpenAIProvider extends AbstractRemoteAIProvider
     /**
      * Отправляет статью в OpenAI Responses API со строгой JSON Schema и преобразует
      * структурированный ответ в общий результат классификации.
+     *
+     * @param ArticleAnalysisRequest $request
+     * @return ArticleAnalysisResult
      */
     public function analyzeArticle(ArticleAnalysisRequest $request): ArticleAnalysisResult
     {
@@ -78,6 +81,9 @@ final class OpenAIProvider extends AbstractRemoteAIProvider
 
     /**
      * Получает embeddings обеих статей одним запросом OpenAI и вычисляет их семантическое сходство.
+     *
+     * @param ArticleComparisonRequest $request
+     * @return ArticleComparisonResult
      */
     public function compareArticles(ArticleComparisonRequest $request): ArticleComparisonResult
     {
@@ -107,6 +113,8 @@ final class OpenAIProvider extends AbstractRemoteAIProvider
     /**
      * Создаёт авторизованный HTTP-клиент OpenAI и добавляет необязательные заголовки
      * организации и проекта, если они заданы в настройках.
+     *
+     * @return PendingRequest
      */
     private function authorizedClient(): PendingRequest
     {
@@ -130,9 +138,10 @@ final class OpenAIProvider extends AbstractRemoteAIProvider
 
     /**
      * Извлекает текст результата из структуры Responses API и отдельно обрабатывает
-     * незавершённые ответы, отказ модели и отсутствие выходного текста.
+     *  незавершённые ответы, отказ модели и отсутствие выходного текста.
      *
-     * @param  array<string, mixed>  $response  Полный ответ OpenAI Responses API.
+     * @param array $response
+     * @return string
      */
     private function responseText(array $response): string
     {

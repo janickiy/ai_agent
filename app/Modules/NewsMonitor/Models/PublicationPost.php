@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\NewsMonitor\Models;
 
+/**
+ * Представляет таблицу `publishing_publication_posts` с подготовленными новостными постами.
+ *
+ * Таблица хранит неизменённые заголовок и описание источника, ссылку и имя источника,
+ * дату, изображение, категорию, хештеги, хеш содержимого, статус, валидацию и время экспорта.
+ */
 final class PublicationPost extends NewsModel
 {
     protected static string $newsTable = 'posts';

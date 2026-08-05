@@ -25,6 +25,11 @@ final class AdministratorManagementTest extends TestCase
             ->assertSee(route('admin.administrators.create'));
 
         $this->actingAs($administrator)
+            ->get(route('admin.administrators.create'))
+            ->assertOk()
+            ->assertSee('Добавление администратора');
+
+        $this->actingAs($administrator)
             ->post(route('admin.administrators.store'), [
                 'name' => 'Второй администратор',
                 'email' => 'SECOND.ADMIN@example.test',
@@ -40,6 +45,11 @@ final class AdministratorManagementTest extends TestCase
         self::assertTrue($created->admin_access);
         self::assertTrue($created->is_active);
         self::assertTrue(Hash::check('SecureAdmin2026', $created->password));
+
+        $this->actingAs($administrator)
+            ->get(route('admin.administrators.edit', $created))
+            ->assertOk()
+            ->assertSee('Редактирование администратора');
 
         $this->actingAs($administrator)
             ->put(route('admin.administrators.update', $created), [

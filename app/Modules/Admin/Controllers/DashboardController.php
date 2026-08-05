@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\NewsMonitor\Services\AgentSettings;
 use App\Modules\Admin\Repositories\AdminReadRepository;
+use App\Modules\NewsMonitor\Services\AgentSettings;
 use Illuminate\View\View;
 
 final class DashboardController extends Controller

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\NewsMonitor\Services\AuditLogger;
 use App\Modules\Admin\Repositories\ContentCleanupRepository;
+use App\Modules\NewsMonitor\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

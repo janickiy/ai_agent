@@ -8,7 +8,14 @@ use App\DTO\Pipeline\ItemDuplicateData;
 use App\Modules\NewsMonitor\Models\ItemDuplicate;
 use App\Repositories\BaseRepository;
 
-/** @extends BaseRepository<ItemDuplicate, ItemDuplicateData> */
+/**
+ * Управляет результатами проверки материалов на дублирование.
+ *
+ * Репозиторий связывает дубликат с оригиналом и скрывает идемпотентную запись
+ * метода сравнения, коэффициента сходства и диагностических данных.
+ *
+ * @extends BaseRepository<ItemDuplicate, ItemDuplicateData>
+ */
 final class ItemDuplicateRepository extends BaseRepository
 {
     public function __construct(ItemDuplicate $model)
@@ -17,8 +24,10 @@ final class ItemDuplicateRepository extends BaseRepository
     }
 
     /**
-     * @param ItemDuplicateData $dto
-     * @return ItemDuplicate
+     * Создаёт или обновляет результат проверки материала на дубликат.
+     *
+     * Единственная запись на материал позволяет повторять анализ и сохранять
+     * актуальный оригинал, метод сравнения и оценку сходства.
      */
     public function upsertForSourceItem(ItemDuplicateData $dto): ItemDuplicate
     {
@@ -34,12 +43,21 @@ final class ItemDuplicateRepository extends BaseRepository
         return $duplicate;
     }
 
+    /**
+     * Указывает базовому репозиторию модель дубликата для проверки типов и построения запросов.
+     *
+     * @return class-string<ItemDuplicate>
+     */
     protected function modelClass(): string
     {
         return ItemDuplicate::class;
     }
 
-    /** @return non-empty-list<class-string<ItemDuplicateData>> */
+    /**
+     * Определяет DTO, разрешённый для записи результатов поиска дубликатов.
+     *
+     * @return non-empty-list<class-string<ItemDuplicateData>>
+     */
     protected function dtoClasses(): array
     {
         return [ItemDuplicateData::class];

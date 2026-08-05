@@ -14,10 +14,29 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
+/**
+ * Безопасно загружает внешние ленты и страницы новостей по HTTP.
+ *
+ * Клиент защищает конвейер от SSRF, проверяет robots.txt, контролирует редиректы
+ * и размер ответа, а также возвращает унифицированный DTO результата загрузки.
+ */
 final class SafeHttpClient implements HttpFetcher
 {
     public function __construct(private readonly UrlCanonicalizer $canonicalizer) {}
 
+
+    /**
+     * Загружает внешний URL с ручной безопасной обработкой каждого редиректа.
+     *
+     * Перед запросом проверяются robots.txt и публичность адреса, после ответа — HTTP-статус
+     * и допустимый размер содержимого; итоговые URL, тело, заголовки и статус возвращаются в DT
+     *
+     * @param string $url
+     * @param bool $checkRobots
+     * @return FetchResult
+     * @throws \Illuminate\Http\Client\ConnectionException
+     * @throws \Illuminate\Http\Client\RequestException
+     */
     public function get(string $url, bool $checkRobots = true): FetchResult
     {
         $current = $this->normalizeFetchUrl($url);
@@ -63,6 +82,13 @@ final class SafeHttpClient implements HttpFetcher
         throw new RuntimeException('Unexpected redirect state.');
     }
 
+    /**
+     * Канонизирует URL для загрузки, преобразует международный домен в ASCII
+     * и сохраняет значимый завершающий слеш исходного пути.
+     *
+     * @param string $url
+     * @return string
+     */
     private function normalizeFetchUrl(string $url): string
     {
         $decoded = trim(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
@@ -94,6 +120,10 @@ final class SafeHttpClient implements HttpFetcher
         return substr($normalized, 0, $queryPosition).'/'.substr($normalized, $queryPosition);
     }
 
+    /**
+     * Проверяет, что URL не указывает на localhost, приватный, зарезервированный
+     * или link-local IP-адрес, предотвращая SSRF-доступ к внутренней инфраструктуре.
+     */
     public function assertPublicUrl(string $url): void
     {
         $parts = parse_url($this->canonicalizer->canonicalize($url));
@@ -116,7 +146,12 @@ final class SafeHttpClient implements HttpFetcher
         }
     }
 
-    /** @return list<string> */
+    /**
+     * Разрешает доменное имя в уникальный список IPv4- и IPv6-адресов для SSRF-проверки.
+     *
+     * @param string $host
+     * @return array
+     */
     private function resolveHost(string $host): array
     {
         $records = dns_get_record($host, DNS_A | DNS_AAAA);
@@ -133,6 +168,13 @@ final class SafeHttpClient implements HttpFetcher
         return array_values(array_unique($ips));
     }
 
+    /**
+     * Проверяет заявленный и фактический размер HTTP-ответа относительно системного лимита.
+     * Двойная проверка защищает память даже при отсутствии или неверном `Content-Length`.
+     *
+     * @param Response $response
+     * @return void
+     */
     private function assertResponseSize(Response $response): void
     {
         $maximum = (int) config('news.max_response_bytes');
@@ -142,6 +184,15 @@ final class SafeHttpClient implements HttpFetcher
         }
     }
 
+    /**
+     * Проверяет путь URL по правилам `robots.txt`, кешируя правила для каждого origin на час.
+     *
+     * Если robots.txt недоступен, загрузка разрешается, чтобы временная ошибка служебного файла
+     * не блокировала весь источник.
+     *
+     * @param string $url
+     * @return bool
+     */
     private function robotsAllows(string $url): bool
     {
         $parts = parse_url($url);
