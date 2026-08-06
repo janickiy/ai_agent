@@ -105,6 +105,30 @@
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 3;
     }
+    .post-description-label {
+        font-size: .68rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+        text-transform: uppercase;
+    }
+    .post-full-description {
+        font-size: .78rem;
+        margin-top: .45rem;
+    }
+    .post-full-description summary {
+        color: var(--bs-primary);
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .post-full-description-text {
+        background: var(--bs-tertiary-bg);
+        border-left: 2px solid var(--bs-primary-border-subtle);
+        margin-top: .4rem;
+        max-height: 18rem;
+        overflow: auto;
+        padding: .55rem .65rem;
+        white-space: pre-line;
+    }
     .post-source,
     .post-category,
     .post-hashtag {
@@ -201,7 +225,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return type === 'display'
                         ? '<a class="post-title" href="' + escape(safeUrl(row.source_url)) + '" target="_blank" rel="noopener noreferrer">'
                             + escape(data) + '<i class="bi bi-box-arrow-up-right ms-1 small" aria-hidden="true"></i></a>'
-                            + '<div class="post-description text-body-secondary">' + escape(row.description_original || '') + '</div>'
+                            + '<div class="post-description-label text-body-secondary mt-2">Краткое описание</div>'
+                            + '<div class="post-description text-body-secondary">' + escape(row.description_original || '—') + '</div>'
+                            + (row.full_description_original
+                                ? '<details class="post-full-description"><summary>Полное описание</summary>'
+                                    + '<div class="post-full-description-text">' + escape(row.full_description_original) + '</div></details>'
+                                : '')
                         : data;
                 },
             },

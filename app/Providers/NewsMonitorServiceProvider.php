@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
+use App\Modules\NewsMonitor\AI\Providers\GeminiProvider;
 use App\Modules\NewsMonitor\AI\Providers\GigaChatProvider;
 use App\Modules\NewsMonitor\AI\Providers\OpenAIProvider;
 use App\Modules\NewsMonitor\AI\Providers\RuleBasedAIProvider;
@@ -32,6 +33,7 @@ final class NewsMonitorServiceProvider extends ServiceProvider
                 'gigachat' => new GigaChatProvider($settings->gigachatConfig()),
                 'yandexgpt' => new YandexGPTProvider($settings->yandexgptConfig()),
                 'openai' => new OpenAIProvider($settings->openaiConfig()),
+                'gemini' => new GeminiProvider($settings->geminiConfig()),
                 default => throw new InvalidArgumentException("Unsupported AI provider: {$provider}"),
             };
         });

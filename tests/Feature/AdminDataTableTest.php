@@ -43,6 +43,7 @@ final class AdminDataTableTest extends TestCase
             'source_published_at' => now()->utc(),
             'title_original' => 'Уникальный готовый пост',
             'description_original' => 'Описание готового поста.',
+            'full_description_original' => 'Полное описание готового поста.',
             'read_more_label' => 'Читать в источнике',
             'category_id' => $category->id,
             'hashtags' => ['#DataTables'],
@@ -129,6 +130,10 @@ final class AdminDataTableTest extends TestCase
             if ($name === 'items') {
                 $response->assertJsonPath('data.0.status_class', 'success');
             }
+
+            if ($name === 'posts') {
+                $response->assertJsonPath('data.0.full_description_original', 'Полное описание готового поста.');
+            }
         }
     }
 
@@ -208,6 +213,7 @@ final class AdminDataTableTest extends TestCase
             'source_published_at' => $item->source_published_at,
             'title_original' => 'Пост с датами',
             'description_original' => 'Описание.',
+            'full_description_original' => 'Полное описание.',
             'read_more_label' => 'Читать в источнике',
             'category_id' => $category->id,
             'hashtags' => [],
@@ -234,6 +240,8 @@ final class AdminDataTableTest extends TestCase
         $this->actingAs($administrator)
             ->get(route('admin.posts.index'))
             ->assertOk()
+            ->assertSeeText('Краткое описание')
+            ->assertSeeText('Полное описание')
             ->assertSeeText('Добавлено')
             ->assertSeeText('Обновлено');
 

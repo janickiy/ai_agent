@@ -90,6 +90,15 @@ final class SettingsController extends Controller
             'max_attempts' => (int) $validated['openai_max_attempts'],
             'verify_ssl' => (bool) $validated['openai_verify_ssl'],
         ];
+        $gemini = [
+            'api_url' => $validated['gemini_api_url'],
+            'model' => $validated['gemini_model'],
+            'embedding_model' => $validated['gemini_embedding_model'],
+            'timeout' => (int) $validated['gemini_timeout'],
+            'connect_timeout' => (int) $validated['gemini_connect_timeout'],
+            'max_attempts' => (int) $validated['gemini_max_attempts'],
+            'verify_ssl' => (bool) $validated['gemini_verify_ssl'],
+        ];
         $providerCredentials = [
             'gigachat' => [
                 'auth_key' => $validated['gigachat_auth_key'] ?? null,
@@ -103,11 +112,15 @@ final class SettingsController extends Controller
             'openai' => [
                 'api_key' => $validated['openai_api_key'] ?? null,
             ],
+            'gemini' => [
+                'api_key' => $validated['gemini_api_key'] ?? null,
+            ],
         ];
         $clearCredentials = [
             'gigachat' => (bool) $validated['clear_gigachat_secrets'],
             'yandexgpt' => (bool) $validated['clear_yandexgpt_credentials'],
             'openai' => (bool) $validated['clear_openai_credentials'],
+            'gemini' => (bool) $validated['clear_gemini_credentials'],
         ];
         $aiData = AISettingsData::fromArray([
             'provider' => $validated['ai_provider'],
@@ -115,6 +128,7 @@ final class SettingsController extends Controller
                 'gigachat' => $gigachat,
                 'yandexgpt' => $yandexgpt,
                 'openai' => $openai,
+                'gemini' => $gemini,
             ],
             'provider_credentials' => $providerCredentials,
             'clear_credentials' => $clearCredentials,

@@ -81,14 +81,20 @@ final class DataTransferObjectTest extends TestCase
                     'model' => 'gpt-test',
                     'api_key' => 'must-not-leak-openai-key',
                 ],
+                'gemini' => [
+                    'model' => 'gemini-test',
+                    'api_key' => 'must-not-leak-gemini-key',
+                ],
             ],
             'provider_credentials' => [
                 'gigachat' => ['auth_key' => 'credential-value'],
                 'openai' => ['api_key' => 'credential-value'],
+                'gemini' => ['api_key' => 'credential-value'],
             ],
             'clear_credentials' => [
                 'gigachat' => true,
                 'openai' => false,
+                'gemini' => false,
             ],
         ]);
 
@@ -102,6 +108,7 @@ final class DataTransferObjectTest extends TestCase
             ],
             'yandexgpt' => ['model' => 'yandexgpt/latest'],
             'openai' => ['model' => 'gpt-test'],
+            'gemini' => ['model' => 'gemini-test'],
         ], $public);
         self::assertArrayNotHasKey('provider_credentials', $public);
         self::assertArrayNotHasKey('clear_credentials', $public);

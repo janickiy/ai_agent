@@ -13,7 +13,6 @@ use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
 use App\Modules\NewsMonitor\AI\DTO\ArticleAnalysisRequest;
 use App\Modules\NewsMonitor\AI\DTO\ArticleComparisonRequest;
 use App\Modules\NewsMonitor\Contracts\HttpFetcher;
-use App\Modules\NewsMonitor\Models\NewsCategory;
 use App\Modules\NewsMonitor\Models\PublicationPost;
 use App\Modules\NewsMonitor\Models\SourceItem;
 use App\Modules\NewsMonitor\Repositories\Catalog\NewsCategoryRepository;
@@ -42,6 +41,7 @@ final class NewsPipeline
     public function __construct(
         private readonly HttpFetcher $http,
         private readonly ArticleExtractor $extractor,
+        private readonly HashtagNormalizer $hashtagNormalizer,
         private readonly AIProvider $ai,
         private readonly AgentSettings $settings,
         private readonly SourceItemRepository $sourceItems,
@@ -80,7 +80,11 @@ final class NewsPipeline
 
             $extractStarted = hrtime(true);
             $fallback = is_array($item->extraction_meta) ? ($item->extraction_meta['feed'] ?? []) : [];
-            $article = $this->extractor->extract($fetched->body, $fetched->url, is_array($fallback) ? $fallback : []);
+            $fallback = is_array($fallback) ? $fallback : [];
+            $article = $this->extractor->extract($fetched->body, $fetched->url, [
+                ...$fallback,
+                'source_name' => $item->source->name,
+            ]);
             $contentForHash = $article->body !== '' ? $article->body : "{$article->title}\n{$article->description}";
             $titleDescriptionHash = hash('sha256', "{$article->title}\n{$article->description}");
             $contentHash = hash('sha256', $contentForHash);
@@ -156,7 +160,7 @@ final class NewsPipeline
                 ? null
                 : $this->categories->findActiveByCode($analysis->categoryCode);
             $isActual = $this->isActual($article->publishedAt);
-            $hashtags = $this->hashtags($analysis->hashtags, $category);
+            $hashtags = $this->hashtagNormalizer->normalize($analysis->hashtags, $category?->hashtag);
 
             $this->itemAnalyses->upsertForSourceItem(new ItemAnalysisData(
                 sourceItemId: (int) $item->getKey(),
@@ -227,6 +231,7 @@ final class NewsPipeline
                     sourcePublishedAt: $article->publishedAt,
                     titleOriginal: $article->title,
                     descriptionOriginal: $article->description,
+                    fullDescriptionOriginal: $article->body,
                     imageUrl: $item->image_url,
                     imageStorageKey: null,
                     readMoreLabel: 'Читать в источнике',
@@ -339,27 +344,6 @@ final class NewsPipeline
     {
         return $date->greaterThanOrEqualTo(now()->utc()->subHours($this->settings->maxNewsAgeHours()))
             && $date->lessThanOrEqualTo(now()->utc()->addHour());
-    }
-
-    /**
-     * Нормализует хештеги AI, добавляет обязательный тег категории, удаляет повторы
-     * и ограничивает результат семью значениями для готовой публикации.
-     *
-     * @param  list<string>  $hashtags
-     * @return list<string>
-     */
-    private function hashtags(array $hashtags, ?NewsCategory $category): array
-    {
-        $values = array_filter(array_map(static function (string $hashtag): string {
-            $normalized = preg_replace('/\s+/u', '', trim($hashtag)) ?? '';
-
-            return $normalized === '' ? '' : (str_starts_with($normalized, '#') ? $normalized : '#'.$normalized);
-        }, $hashtags));
-        if ($category !== null) {
-            array_unshift($values, $category->hashtag);
-        }
-
-        return array_slice(array_values(array_unique($values)), 0, 7);
     }
 
     /**

@@ -25,7 +25,7 @@ final class SettingsRequest extends FormRequest
             'max_news_age_hours' => ['required', 'integer', 'min:1', 'max:8760'],
             'event_similarity_threshold' => ['required', 'numeric', 'min:0', 'max:1'],
             'ai_provider' => ['required', 'string', Rule::in(AISettings::availableProviderCodes())],
-            'settings_tab' => ['required', 'string', Rule::in(['gigachat', 'yandexgpt', 'openai'])],
+            'settings_tab' => ['required', 'string', Rule::in(['gigachat', 'yandexgpt', 'openai', 'gemini'])],
             'gigachat_auth_url' => [
                 'required',
                 'url',
@@ -98,6 +98,32 @@ final class SettingsRequest extends FormRequest
             'openai_max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
             'openai_verify_ssl' => ['accepted'],
             'clear_openai_credentials' => ['boolean'],
+            'gemini_api_url' => [
+                'required',
+                'url',
+                'starts_with:https://',
+                'max:2048',
+                $this->officialEndpoint('generativelanguage.googleapis.com', 443),
+            ],
+            'gemini_model' => ['required', 'string', 'max:255', 'regex:/^(?:models\/)?[a-zA-Z0-9._-]+$/'],
+            'gemini_embedding_model' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^(?:models\/)?[a-zA-Z0-9._-]+$/',
+            ],
+            'gemini_api_key' => ['nullable', 'string', 'max:4096'],
+            'gemini_timeout' => ['required', 'integer', 'min:1', 'max:600'],
+            'gemini_connect_timeout' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:120',
+                'lte:gemini_timeout',
+            ],
+            'gemini_max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
+            'gemini_verify_ssl' => ['accepted'],
+            'clear_gemini_credentials' => ['boolean'],
         ];
     }
 
@@ -185,6 +211,25 @@ final class SettingsRequest extends FormRequest
                 if (! $hasApiKey) {
                     $validator->errors()->add('openai_api_key', 'Для OpenAI укажите API Key.');
                 }
+
+                return;
+            }
+
+            if ($provider === 'gemini') {
+                if ($this->boolean('clear_gemini_credentials')) {
+                    $validator->errors()->add(
+                        'clear_gemini_credentials',
+                        'Перед удалением учётных данных переключите активный провайдер.',
+                    );
+
+                    return;
+                }
+
+                $hasApiKey = trim((string) $this->input('gemini_api_key')) !== ''
+                    || $stored['gemini']['api_key_configured'];
+                if (! $hasApiKey) {
+                    $validator->errors()->add('gemini_api_key', 'Для Gemini укажите API Key.');
+                }
             }
         }];
     }
@@ -200,6 +245,8 @@ final class SettingsRequest extends FormRequest
             'clear_yandexgpt_credentials' => $this->boolean('clear_yandexgpt_credentials'),
             'openai_verify_ssl' => $this->boolean('openai_verify_ssl'),
             'clear_openai_credentials' => $this->boolean('clear_openai_credentials'),
+            'gemini_verify_ssl' => $this->boolean('gemini_verify_ssl'),
+            'clear_gemini_credentials' => $this->boolean('clear_gemini_credentials'),
             'event_similarity_threshold' => str_replace(
                 ',',
                 '.',

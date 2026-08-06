@@ -14,11 +14,6 @@ use Throwable;
 
 final class OpenAIProvider extends AbstractRemoteAIProvider
 {
-    /**
-     * Инициализирует интеграцию OpenAI и отклоняет небезопасный или неофициальный API URL.
-     *
-     * @param  array<string, mixed>  $config  Настройки авторизации, моделей и HTTP-клиента.
-     */
     public function __construct(array $config)
     {
         parent::__construct($config);

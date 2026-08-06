@@ -45,6 +45,10 @@ final class NewsPipelineTest extends TestCase
         self::assertSame('Читать в источнике', $first->read_more_label);
         self::assertSame('В регионе завершено строительство нового моста', $first->title_original);
         self::assertSame('Новый мост открыл движение по городской магистрали.', $first->description_original);
+        self::assertSame(
+            "Новый мост открыл движение по городской магистрали.\nПодрядчик завершил строительство объекта.",
+            $first->full_description_original,
+        );
         self::assertSame('accepted', $item->fresh()->status);
     }
 

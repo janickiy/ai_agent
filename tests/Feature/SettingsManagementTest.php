@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\DTO\Settings\AISettingsData;
 use App\Models\User;
 use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
+use App\Modules\NewsMonitor\AI\Providers\GeminiProvider;
 use App\Modules\NewsMonitor\AI\Providers\GigaChatProvider;
 use App\Modules\NewsMonitor\AI\Providers\OpenAIProvider;
 use App\Modules\NewsMonitor\AI\Providers\RuleBasedAIProvider;
@@ -38,12 +39,15 @@ final class SettingsManagementTest extends TestCase
             ->assertSee('id="gigachat-settings-tab"', false)
             ->assertSee('id="yandexgpt-settings-tab"', false)
             ->assertSee('id="openai-settings-tab"', false)
+            ->assertSee('id="gemini-settings-tab"', false)
             ->assertSee('id="gigachat-settings-pane"', false)
             ->assertSee('id="yandexgpt-settings-pane"', false)
             ->assertSee('id="openai-settings-pane"', false)
+            ->assertSee('id="gemini-settings-pane"', false)
             ->assertSee('Подключение GigaChat')
             ->assertSee('Подключение YandexGPT')
             ->assertSee('Подключение OpenAI')
+            ->assertSee('Подключение Google Gemini')
             ->assertSee('Автоматическое создание публикаций')
             ->assertSee('Сохранить');
     }
@@ -57,6 +61,7 @@ final class SettingsManagementTest extends TestCase
         $yandexApiKey = 'plain-yandex-api-key-for-test';
         $yandexIamToken = 'plain-yandex-iam-token-for-test';
         $openAiApiKey = 'plain-openai-api-key-for-test';
+        $geminiApiKey = 'plain-gemini-api-key-for-test';
 
         $this->actingAs($administrator)
             ->put('/admin/settings', $this->payload([
@@ -74,6 +79,9 @@ final class SettingsManagementTest extends TestCase
                 'openai_organization' => 'org-for-test',
                 'openai_project' => 'project-for-test',
                 'openai_api_key' => $openAiApiKey,
+                'gemini_model' => 'gemini-test-model',
+                'gemini_embedding_model' => 'gemini-embedding-test',
+                'gemini_api_key' => $geminiApiKey,
             ]))
             ->assertRedirect(route('admin.settings.edit'))
             ->assertSessionHas('status', 'Настройки сохранены.')
@@ -96,9 +104,11 @@ final class SettingsManagementTest extends TestCase
         self::assertSame('openai-embedding-for-test', $ai->value['openai']['embedding_model']);
         self::assertSame('org-for-test', $ai->value['openai']['organization']);
         self::assertSame('project-for-test', $ai->value['openai']['project']);
+        self::assertSame('gemini-test-model', $ai->value['gemini']['model']);
+        self::assertSame('gemini-embedding-test', $ai->value['gemini']['embedding_model']);
         self::assertFalse($ai->is_secret);
 
-        foreach (['ai.gigachat.credentials', 'ai.yandexgpt.credentials', 'ai.openai.credentials'] as $key) {
+        foreach (['ai.gigachat.credentials', 'ai.yandexgpt.credentials', 'ai.openai.credentials', 'ai.gemini.credentials'] as $key) {
             self::assertTrue(SystemSetting::query()->findOrFail($key)->is_secret);
         }
 
@@ -113,6 +123,9 @@ final class SettingsManagementTest extends TestCase
 
         $rawOpenAiCredentials = $this->rawSettingValue('ai.openai.credentials');
         self::assertStringNotContainsString($openAiApiKey, $rawOpenAiCredentials);
+
+        $rawGeminiCredentials = $this->rawSettingValue('ai.gemini.credentials');
+        self::assertStringNotContainsString($geminiApiKey, $rawGeminiCredentials);
 
         $config = app(AISettings::class)->gigachatConfig();
         self::assertSame($authKey, $config['auth_key']);
@@ -134,8 +147,13 @@ final class SettingsManagementTest extends TestCase
         self::assertSame('org-for-test', $openAiConfig['organization']);
         self::assertSame('project-for-test', $openAiConfig['project']);
 
+        $geminiConfig = $this->providerSettings('gemini');
+        self::assertSame($geminiApiKey, $geminiConfig['api_key']);
+        self::assertSame('gemini-test-model', $geminiConfig['model']);
+        self::assertSame('gemini-embedding-test', $geminiConfig['embedding_model']);
+
         $auditJson = AuditLog::query()->where('action', 'settings.updated')->firstOrFail()->toJson();
-        foreach ([$authKey, $clientId, $clientSecret, $yandexApiKey, $yandexIamToken, $openAiApiKey] as $secret) {
+        foreach ([$authKey, $clientId, $clientSecret, $yandexApiKey, $yandexIamToken, $openAiApiKey, $geminiApiKey] as $secret) {
             self::assertStringNotContainsString($secret, $auditJson);
         }
 
@@ -143,7 +161,7 @@ final class SettingsManagementTest extends TestCase
             ->get('/admin/settings')
             ->assertOk()
             ->assertSee('Сохранён');
-        foreach ([$authKey, $clientId, $clientSecret, $yandexApiKey, $yandexIamToken, $openAiApiKey] as $secret) {
+        foreach ([$authKey, $clientId, $clientSecret, $yandexApiKey, $yandexIamToken, $openAiApiKey, $geminiApiKey] as $secret) {
             $response->assertDontSee($secret);
         }
 
@@ -163,6 +181,7 @@ final class SettingsManagementTest extends TestCase
             'yandexgpt_api_key' => 'existing-yandex-api-key',
             'yandexgpt_iam_token' => 'existing-yandex-iam-token',
             'openai_api_key' => 'existing-openai-api-key',
+            'gemini_api_key' => 'existing-gemini-api-key',
         ]))->assertRedirect();
 
         $this->actingAs($administrator)
@@ -171,6 +190,7 @@ final class SettingsManagementTest extends TestCase
                 'gigachat_model' => 'GigaChat-New',
                 'yandexgpt_model' => 'YandexGPT-New',
                 'openai_model' => 'OpenAI-New',
+                'gemini_model' => 'Gemini-New',
             ]))
             ->assertRedirect();
 
@@ -188,6 +208,10 @@ final class SettingsManagementTest extends TestCase
         $openAiConfig = $this->providerSettings('openai');
         self::assertSame('existing-openai-api-key', $openAiConfig['api_key']);
         self::assertSame('OpenAI-New', $openAiConfig['model']);
+
+        $geminiConfig = $this->providerSettings('gemini');
+        self::assertSame('existing-gemini-api-key', $geminiConfig['api_key']);
+        self::assertSame('Gemini-New', $geminiConfig['model']);
     }
 
     public function test_administrator_can_explicitly_clear_all_provider_credentials(): void
@@ -200,6 +224,7 @@ final class SettingsManagementTest extends TestCase
             'yandexgpt_api_key' => 'yandex-api-key-to-remove',
             'yandexgpt_iam_token' => 'yandex-iam-token-to-remove',
             'openai_api_key' => 'openai-api-key-to-remove',
+            'gemini_api_key' => 'gemini-api-key-to-remove',
         ]))->assertRedirect();
 
         $this->actingAs($administrator)
@@ -208,6 +233,7 @@ final class SettingsManagementTest extends TestCase
                 'clear_gigachat_secrets' => '1',
                 'clear_yandexgpt_credentials' => '1',
                 'clear_openai_credentials' => '1',
+                'clear_gemini_credentials' => '1',
             ]))
             ->assertRedirect();
 
@@ -218,6 +244,7 @@ final class SettingsManagementTest extends TestCase
         self::assertSame('', $this->providerSettings('yandexgpt')['api_key']);
         self::assertSame('', $this->providerSettings('yandexgpt')['iam_token']);
         self::assertSame('', $this->providerSettings('openai')['api_key']);
+        self::assertSame('', $this->providerSettings('gemini')['api_key']);
     }
 
     public function test_clear_credentials_takes_precedence_over_replacement_values(): void
@@ -274,6 +301,20 @@ final class SettingsManagementTest extends TestCase
             ->put('/admin/settings', $this->payload(['ai_provider' => 'openai']))
             ->assertRedirect('/admin/settings')
             ->assertSessionHasErrors('openai_api_key');
+
+        self::assertSame('rules', app(AISettings::class)->provider());
+    }
+
+    public function test_gemini_cannot_be_activated_without_api_key(): void
+    {
+        $this->actingAs($this->administrator())
+            ->from('/admin/settings')
+            ->put('/admin/settings', $this->payload([
+                'ai_provider' => 'gemini',
+                'settings_tab' => 'gemini',
+            ]))
+            ->assertRedirect('/admin/settings')
+            ->assertSessionHasErrors('gemini_api_key');
 
         self::assertSame('rules', app(AISettings::class)->provider());
     }
@@ -340,6 +381,32 @@ final class SettingsManagementTest extends TestCase
         self::assertSame(
             'original-openai-api-key',
             $this->providerSettings('openai')['api_key'],
+        );
+    }
+
+    public function test_gemini_credentials_cannot_be_sent_to_an_untrusted_endpoint(): void
+    {
+        $administrator = $this->administrator();
+        $this->actingAs($administrator)
+            ->put('/admin/settings', $this->payload([
+                'gigachat_auth_key' => 'valid-gigachat-auth-key',
+                'gemini_api_key' => 'original-gemini-api-key',
+            ]))
+            ->assertRedirect();
+
+        $this->actingAs($administrator)
+            ->from('/admin/settings')
+            ->put('/admin/settings', $this->payload([
+                'settings_tab' => 'gemini',
+                'gemini_api_url' => 'https://attacker.example.test/v1beta',
+                'gemini_api_key' => 'replacement-gemini-key-must-not-be-stored',
+            ]))
+            ->assertRedirect('/admin/settings')
+            ->assertSessionHasErrors('gemini_api_url');
+
+        self::assertSame(
+            'original-gemini-api-key',
+            $this->providerSettings('gemini')['api_key'],
         );
     }
 
@@ -439,6 +506,7 @@ final class SettingsManagementTest extends TestCase
             'yandexgpt_api_key' => 'must-not-be-flashed-yandex-api-key',
             'yandexgpt_iam_token' => 'must-not-be-flashed-yandex-iam-token',
             'openai_api_key' => 'must-not-be-flashed-openai-api-key',
+            'gemini_api_key' => 'must-not-be-flashed-gemini-api-key',
         ];
 
         $response = $this->actingAs($administrator)
@@ -486,6 +554,13 @@ final class SettingsManagementTest extends TestCase
         ));
 
         self::assertInstanceOf(OpenAIProvider::class, app(AIProvider::class));
+
+        app(AISettings::class)->update($this->providerSettingsData(
+            'gemini',
+            ['api_key' => 'database-gemini-key'],
+        ));
+
+        self::assertInstanceOf(GeminiProvider::class, app(AIProvider::class));
     }
 
     public function test_viewer_can_see_settings_but_cannot_update_them_or_see_secrets(): void
@@ -548,6 +623,13 @@ final class SettingsManagementTest extends TestCase
             'openai_connect_timeout' => 7,
             'openai_max_attempts' => 5,
             'openai_verify_ssl' => '1',
+            'gemini_api_url' => 'https://generativelanguage.googleapis.com/v1beta',
+            'gemini_model' => 'gemini-3.6-flash',
+            'gemini_embedding_model' => 'gemini-embedding-2',
+            'gemini_timeout' => 120,
+            'gemini_connect_timeout' => 8,
+            'gemini_max_attempts' => 5,
+            'gemini_verify_ssl' => '1',
         ], $overrides);
     }
 
@@ -592,6 +674,7 @@ final class SettingsManagementTest extends TestCase
             'gigachat' => (array) config('ai.providers.gigachat'),
             'yandexgpt' => (array) config('ai.providers.yandexgpt'),
             'openai' => (array) config('ai.providers.openai'),
+            'gemini' => (array) config('ai.providers.gemini'),
         ];
         $providerSettings[$provider] = array_replace($providerSettings[$provider], $settings);
 

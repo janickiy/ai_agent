@@ -194,6 +194,27 @@
                                     'clear_name' => 'clear_openai_credentials',
                                     'clear_label' => 'Удалить сохранённый API Key OpenAI',
                                 ],
+                                'gemini' => [
+                                    'label' => 'Google Gemini',
+                                    'icon' => 'bi-gem',
+                                    'fields' => [
+                                        ['name' => 'gemini_api_url', 'key' => 'api_url', 'label' => 'URL API', 'type' => 'url', 'column' => 'col-lg-6', 'required' => true],
+                                        ['name' => 'gemini_model', 'key' => 'model', 'label' => 'Модель', 'type' => 'text', 'column' => 'col-md-6 col-lg-3', 'required' => true],
+                                        ['name' => 'gemini_embedding_model', 'key' => 'embedding_model', 'label' => 'Модель embeddings', 'type' => 'text', 'column' => 'col-md-6 col-lg-3', 'required' => true],
+                                        ['name' => 'gemini_timeout', 'key' => 'timeout', 'label' => 'Таймаут запроса', 'type' => 'number', 'column' => 'col-md-4', 'required' => true, 'min' => 1, 'max' => 600, 'suffix' => 'сек.'],
+                                        ['name' => 'gemini_connect_timeout', 'key' => 'connect_timeout', 'label' => 'Таймаут подключения', 'type' => 'number', 'column' => 'col-md-4', 'required' => true, 'min' => 1, 'max' => 120, 'suffix' => 'сек.'],
+                                        ['name' => 'gemini_max_attempts', 'key' => 'max_attempts', 'label' => 'Количество попыток', 'type' => 'number', 'column' => 'col-md-4', 'required' => true, 'min' => 1, 'max' => 10],
+                                    ],
+                                    'switches' => [
+                                        ['name' => 'gemini_verify_ssl', 'key' => 'verify_ssl', 'label' => 'Проверять SSL-сертификат', 'help' => 'Обязательная защита учётных данных; отключение недоступно.', 'locked' => true],
+                                    ],
+                                    'credentials' => [
+                                        ['name' => 'gemini_api_key', 'state' => 'api_key_configured', 'label' => 'Gemini API Key'],
+                                    ],
+                                    'clear_name' => 'clear_gemini_credentials',
+                                    'clear_label' => 'Удалить сохранённый API Key Gemini',
+                                    'notice' => 'Gemini API должен быть доступен в регионе, из которого сервер выполняет запросы.',
+                                ],
                             ];
                             $settingsTabErrors = [];
 
@@ -260,6 +281,13 @@
                                         </div>
                                         <span class="badge text-bg-light border text-body ms-sm-auto">Секреты повторно не отображаются</span>
                                     </div>
+
+                                    @if (isset($tab['notice']))
+                                        <div class="alert alert-warning py-2 small" role="note">
+                                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                            {{ $tab['notice'] }}
+                                        </div>
+                                    @endif
 
                                     <div class="row g-3">
                                         @foreach ($tab['fields'] as $field)

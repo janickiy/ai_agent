@@ -76,6 +76,7 @@ final class PipelineRepositoryCrudTest extends TestCase
             sourcePublishedAt: $publishedAt,
             titleOriginal: 'Тестовая строительная новость',
             descriptionOriginal: 'Описание тестовой строительной новости.',
+            fullDescriptionOriginal: 'Полный текст тестовой строительной новости.',
             imageUrl: null,
             imageStorageKey: null,
             readMoreLabel: 'Читать в источнике',

@@ -28,11 +28,6 @@ final class GigaChatProvider implements AIProvider
 
     private const INVALID_JSON_MESSAGE = 'GigaChat returned invalid JSON.';
 
-    /**
-     * Инициализирует интеграцию GigaChat и проверяет официальные адреса API и обязательную проверку TLS.
-     *
-     * @param  array<string, mixed>  $config  Настройки авторизации, моделей и HTTP-клиента.
-     */
     public function __construct(private readonly array $config)
     {
         $this->assertOfficialEndpoint('auth_url', 'ngw.devices.sberbank.ru', 9443);

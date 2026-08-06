@@ -10,29 +10,28 @@ use DateTimeInterface;
 final readonly class PublicationPostData extends DataTransferObject
 {
     /**
-     * @param list<string> $hashtags
-     * @param array<string, mixed> $validationMeta
+     * @param  list<string>  $hashtags
+     * @param  array<string, mixed>  $validationMeta
      */
     public function __construct(
-        public int               $sourceItemId,
-        public string            $idempotencyKey,
-        public string            $sourceUrl,
-        public string            $sourceName,
+        public int $sourceItemId,
+        public string $idempotencyKey,
+        public string $sourceUrl,
+        public string $sourceName,
         public DateTimeInterface $sourcePublishedAt,
-        public string            $titleOriginal,
-        public string            $descriptionOriginal,
-        public ?string           $imageUrl,
-        public ?string           $imageStorageKey,
-        public string            $readMoreLabel,
-        public int               $categoryId,
-        public array             $hashtags,
-        public string            $contentHash,
-        public string            $status,
-        public array             $validationMeta,
+        public string $titleOriginal,
+        public string $descriptionOriginal,
+        public string $fullDescriptionOriginal,
+        public ?string $imageUrl,
+        public ?string $imageStorageKey,
+        public string $readMoreLabel,
+        public int $categoryId,
+        public array $hashtags,
+        public string $contentHash,
+        public string $status,
+        public array $validationMeta,
         public DateTimeInterface $readyAt,
-    )
-    {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function toArray(): array
@@ -45,6 +44,7 @@ final readonly class PublicationPostData extends DataTransferObject
             'source_published_at' => $this->sourcePublishedAt,
             'title_original' => $this->titleOriginal,
             'description_original' => $this->descriptionOriginal,
+            'full_description_original' => $this->fullDescriptionOriginal,
             'image_url' => $this->imageUrl,
             'image_storage_key' => $this->imageStorageKey,
             'read_more_label' => $this->readMoreLabel,

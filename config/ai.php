@@ -39,5 +39,14 @@ return [
             'max_attempts' => 5,
             'verify_ssl' => true,
         ],
+        'gemini' => [
+            'api_url' => 'https://generativelanguage.googleapis.com/v1beta',
+            'model' => 'gemini-3.6-flash',
+            'embedding_model' => 'gemini-embedding-2',
+            'timeout' => 120,
+            'connect_timeout' => 10,
+            'max_attempts' => 5,
+            'verify_ssl' => true,
+        ],
     ],
 ];

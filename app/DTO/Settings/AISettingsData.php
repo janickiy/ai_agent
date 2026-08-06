@@ -19,47 +19,45 @@ final readonly class AISettingsData extends DataTransferObject
     ];
 
     /** @var list<string> */
-    private const PROVIDERS = ['gigachat', 'yandexgpt', 'openai'];
+    private const PROVIDERS = ['gigachat', 'yandexgpt', 'openai', 'gemini'];
 
     /**
-     * @param array<string, array<string, mixed>> $providerSettings
-     * @param array<string, array<string, mixed>> $providerCredentials
-     * @param array<string, bool> $clearCredentials
+     * @param  array<string, array<string, mixed>>  $providerSettings
+     * @param  array<string, array<string, mixed>>  $providerCredentials
+     * @param  array<string, bool>  $clearCredentials
      */
     public function __construct(
         public string $provider,
-        public array  $providerSettings,
-        public array  $providerCredentials,
-        public array  $clearCredentials,
-    )
-    {
-    }
+        public array $providerSettings,
+        public array $providerCredentials,
+        public array $clearCredentials,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
     {
-        $provider = trim((string)($data['provider'] ?? ''));
+        $provider = trim((string) ($data['provider'] ?? ''));
         if ($provider === '') {
             throw new InvalidArgumentException('AI provider is required.');
         }
 
         $providerSettings = $data['provider_settings'] ?? null;
-        if (!is_array($providerSettings)) {
+        if (! is_array($providerSettings)) {
             throw new InvalidArgumentException('AI provider settings must be an array.');
         }
 
         foreach (self::PROVIDERS as $providerCode) {
-            if (!isset($providerSettings[$providerCode]) || !is_array($providerSettings[$providerCode])) {
+            if (! isset($providerSettings[$providerCode]) || ! is_array($providerSettings[$providerCode])) {
                 throw new InvalidArgumentException("Settings for AI provider {$providerCode} are required.");
             }
         }
 
         $providerCredentials = $data['provider_credentials'] ?? [];
-        if (!is_array($providerCredentials)) {
+        if (! is_array($providerCredentials)) {
             throw new InvalidArgumentException('AI provider credentials must be an array.');
         }
         foreach (self::PROVIDERS as $providerCode) {
-            if (isset($providerCredentials[$providerCode]) && !is_array($providerCredentials[$providerCode])) {
+            if (isset($providerCredentials[$providerCode]) && ! is_array($providerCredentials[$providerCode])) {
                 throw new InvalidArgumentException("Credentials for AI provider {$providerCode} must be an array.");
             }
         }
@@ -69,8 +67,8 @@ final readonly class AISettingsData extends DataTransferObject
             providerSettings: $providerSettings,
             providerCredentials: $providerCredentials,
             clearCredentials: array_map(
-                static fn(mixed $clear): bool => (bool)$clear,
-                (array)($data['clear_credentials'] ?? []),
+                static fn (mixed $clear): bool => (bool) $clear,
+                (array) ($data['clear_credentials'] ?? []),
             ),
         );
     }

@@ -28,18 +28,21 @@ final class AISettings
         'gigachat' => 'ai.gigachat.credentials',
         'yandexgpt' => 'ai.yandexgpt.credentials',
         'openai' => 'ai.openai.credentials',
+        'gemini' => 'ai.gemini.credentials',
     ];
 
     private const CREDENTIAL_FIELDS = [
         'gigachat' => ['auth_key', 'client_id', 'client_secret'],
         'yandexgpt' => ['api_key', 'iam_token'],
         'openai' => ['api_key'],
+        'gemini' => ['api_key'],
     ];
 
     private const PROVIDER_LABELS = [
         'gigachat' => 'GigaChat',
         'yandexgpt' => 'YandexGPT',
         'openai' => 'OpenAI',
+        'gemini' => 'Gemini',
     ];
 
     private const PROVIDERS = [
@@ -47,6 +50,7 @@ final class AISettings
         'gigachat' => ['label' => 'GigaChat', 'available' => true],
         'yandexgpt' => ['label' => 'YandexGPT', 'available' => true],
         'openai' => ['label' => 'OpenAI', 'available' => true],
+        'gemini' => ['label' => 'Google Gemini', 'available' => true],
     ];
 
     /** @var array<string, mixed>|null */
@@ -122,6 +126,16 @@ final class AISettings
     }
 
     /**
+     * Формирует полную конфигурацию Google Gemini, включая расшифрованный API-ключ.
+     *
+     * @return array<string, mixed>
+     */
+    public function geminiConfig(): array
+    {
+        return $this->providerConfig('gemini');
+    }
+
+    /**
      * Подготавливает безопасные значения для формы администрирования.
      *
      * Вместо самих секретов метод возвращает только признаки их наличия и ошибки расшифровки.
@@ -145,6 +159,10 @@ final class AISettings
             'openai' => [
                 ...$public['openai'],
                 ...$this->credentialStatus('openai'),
+            ],
+            'gemini' => [
+                ...$public['gemini'],
+                ...$this->credentialStatus('gemini'),
             ],
         ];
     }
@@ -198,6 +216,7 @@ final class AISettings
             'gigachat' => $this->normalizeGigachat($data->providerSettings['gigachat']),
             'yandexgpt' => $this->normalizeYandexgpt($data->providerSettings['yandexgpt']),
             'openai' => $this->normalizeOpenai($data->providerSettings['openai']),
+            'gemini' => $this->normalizeGemini($data->providerSettings['gemini']),
         ];
         $credentials = [];
 
@@ -232,6 +251,10 @@ final class AISettings
 
         if ($provider === 'openai' && $credentials['openai']['api_key'] === '') {
             throw new InvalidArgumentException('OpenAI requires an API Key.');
+        }
+
+        if ($provider === 'gemini' && $credentials['gemini']['api_key'] === '') {
+            throw new InvalidArgumentException('Gemini requires an API Key.');
         }
 
         DB::transaction(function () use ($public, $credentials): void {
@@ -307,6 +330,9 @@ final class AISettings
             ),
             'openai' => $this->normalizeOpenai(
                 is_array($stored['openai'] ?? null) ? $stored['openai'] : [],
+            ),
+            'gemini' => $this->normalizeGemini(
+                is_array($stored['gemini'] ?? null) ? $stored['gemini'] : [],
             ),
         ];
     }
@@ -494,6 +520,27 @@ final class AISettings
     }
 
     /**
+     * Приводит публичные настройки Google Gemini к ожидаемым типам и принудительно включает проверку TLS.
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function normalizeGemini(array $values): array
+    {
+        $values = array_replace($this->defaults()['gemini'], $values);
+
+        return [
+            'api_url' => trim((string) $values['api_url']),
+            'model' => trim((string) $values['model']),
+            'embedding_model' => trim((string) $values['embedding_model']),
+            'timeout' => (int) $values['timeout'],
+            'connect_timeout' => (int) $values['connect_timeout'],
+            'max_attempts' => (int) $values['max_attempts'],
+            'verify_ssl' => true,
+        ];
+    }
+
+    /**
      * Возвращает безопасную конфигурацию AI из файлов приложения для первого запуска
      * и восстановления отсутствующих полей сохранённых настроек.
      *
@@ -506,6 +553,7 @@ final class AISettings
             'gigachat' => (array) config('ai.providers.gigachat'),
             'yandexgpt' => (array) config('ai.providers.yandexgpt'),
             'openai' => (array) config('ai.providers.openai'),
+            'gemini' => (array) config('ai.providers.gemini'),
         ];
     }
 

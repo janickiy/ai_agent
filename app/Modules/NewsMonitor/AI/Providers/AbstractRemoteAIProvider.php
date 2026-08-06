@@ -193,9 +193,6 @@ abstract class AbstractRemoteAIProvider implements AIProvider
     /**
      * Проверяет, что запросы будут отправляться только на официальный HTTPS-хост
      *  провайдера и что проверка TLS-сертификата не отключена.
-     *
-     * @param string $host
-     * @return void
      */
     protected function assertSecureConfiguration(string $host): void
     {
@@ -234,10 +231,6 @@ abstract class AbstractRemoteAIProvider implements AIProvider
 
     /**
      * Вычисляет косинусное сходство двух embedding-векторов для оценки близости статей.
-     *
-     * @param array $first
-     * @param array $second
-     * @return float
      */
     protected function cosine(array $first, array $second): float
     {
@@ -265,6 +258,7 @@ abstract class AbstractRemoteAIProvider implements AIProvider
         return match ($this->code()) {
             'yandexgpt' => 'YandexGPT',
             'openai' => 'OpenAI',
+            'gemini' => 'Gemini',
             default => $this->code(),
         };
     }

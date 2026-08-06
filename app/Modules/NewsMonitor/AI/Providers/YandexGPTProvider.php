@@ -14,11 +14,6 @@ use Throwable;
 
 final class YandexGPTProvider extends AbstractRemoteAIProvider
 {
-    /**
-     * Инициализирует интеграцию YandexGPT и проверяет использование официального защищённого API.
-     *
-     * @param  array<string, mixed>  $config  Настройки авторизации, каталога, моделей и HTTP-клиента.
-     */
     public function __construct(array $config)
     {
         parent::__construct($config);
