@@ -134,10 +134,10 @@
     .items-card .item-table th:nth-child(1) { width: 3%; }
     .items-card .item-table th:nth-child(2) { width: 4%; }
     .items-card .item-table th:nth-child(3) { width: 11%; }
-    .items-card .item-table th:nth-child(4) { width: 9%; }
-    .items-card .item-table th:nth-child(5) { width: 9%; }
+    .items-card .item-table th:nth-child(4) { width: 10.5%; }
+    .items-card .item-table th:nth-child(5) { width: 10.5%; }
     .items-card .item-table th:nth-child(6) { width: 9%; }
-    .items-card .item-table th:nth-child(7) { width: 21%; }
+    .items-card .item-table th:nth-child(7) { width: 18%; }
     .items-card .item-table th:nth-child(8) { width: 10%; }
     .items-card .item-table th:nth-child(9) { width: 12%; }
     .items-card .item-table th:nth-child(10) { width: 12%; }
@@ -170,9 +170,16 @@
     }
     .item-date {
         align-items: center;
-        display: inline-flex;
+        display: flex;
         gap: .4rem;
-        white-space: nowrap;
+        line-height: 1.25;
+        max-width: 100%;
+        min-width: 0;
+        white-space: normal;
+        width: 100%;
+    }
+    .item-date-value {
+        min-width: 0;
     }
     .item-source {
         font-size: .75rem;
@@ -240,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         return data
-            ? '<span class="item-date"><i class="bi bi-' + icon + ' text-body-secondary" aria-hidden="true"></i>' + escape(data) + '</span>'
+            ? '<span class="item-date"><i class="bi bi-' + icon + ' text-body-secondary" aria-hidden="true"></i><span class="item-date-value">' + escape(data) + '</span></span>'
             : '<span class="text-body-secondary">—</span>';
     }
 
