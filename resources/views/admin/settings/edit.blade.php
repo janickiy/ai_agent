@@ -59,7 +59,7 @@
                                                 <input class="form-check-input" type="checkbox" role="switch" id="automatic-publication" name="automatic_publication" value="1" @checked(old('automatic_publication', $settings['automatic_publication'])) @cannot('manage-settings') disabled @endcannot>
                                                 <label class="form-check-label fw-semibold" for="automatic-publication">Автоматическое создание публикаций</label>
                                             </div>
-                                            <div class="form-text mt-0">После проверок материал сохраняется в разделе готовых постов.</div>
+                                            <div class="form-text mt-0">После проверок материал отправляется в очередь Kaboom и появляется в опубликованных постах только после успешного ответа API.</div>
                                         </div>
                                     </div>
                                 </div>
@@ -393,6 +393,81 @@
                                     </div>
                                 </div>
                             @endforeach
+                        </div>
+                    </section>
+
+                    <hr class="my-4">
+
+                    <section aria-labelledby="kaboom-settings-heading">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <span class="settings-section-icon text-bg-primary">
+                                <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+                            </span>
+                            <div>
+                                <h4 class="h6 fw-bold mb-0" id="kaboom-settings-heading">Публикация на Kaboom</h4>
+                                <div class="small text-body-secondary">Подключение к API для отправки опубликованных новостей на kaboom.pro.</div>
+                            </div>
+                        </div>
+
+                        <div class="rounded border p-3">
+                            <div class="row g-3">
+                                <div class="col-lg-7">
+                                    <label class="form-label fw-semibold" for="kaboom-endpoint">Endpoint API</label>
+                                    <input
+                                        class="form-control"
+                                        type="url"
+                                        id="kaboom-endpoint"
+                                        value="{{ $kaboomSettings['endpoint'] }}"
+                                        readonly
+                                    >
+                                    <div class="form-text">Адрес зафиксирован в приложении и недоступен для изменения.</div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <label class="form-label fw-semibold mb-0" for="kaboom-api-key">X-API-Key</label>
+                                        @if ($kaboomSettings['api_key_configured'])
+                                            <span class="badge text-bg-success">Сохранён</span>
+                                        @else
+                                            <span class="badge text-bg-warning">Не задан</span>
+                                        @endif
+                                    </div>
+                                    <input
+                                        class="form-control @error('kaboom_api_key') is-invalid @enderror"
+                                        type="password"
+                                        id="kaboom-api-key"
+                                        name="kaboom_api_key"
+                                        autocomplete="new-password"
+                                        placeholder="Введите новое значение"
+                                        @cannot('manage-settings') disabled @endcannot
+                                    >
+                                    @error('kaboom_api_key')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <div class="form-text">Оставьте поле пустым, чтобы сохранить текущий ключ.</div>
+                                </div>
+                            </div>
+
+                            @if ($kaboomSettings['decryption_error'])
+                                <div class="alert alert-danger py-2 small mt-3 mb-0" role="alert">
+                                    <strong>Не удалось расшифровать сохранённый API-ключ Kaboom.</strong>
+                                    Введите новый ключ либо удалите повреждённое значение.
+                                </div>
+                            @endif
+
+                            <div class="form-check mt-3">
+                                <input
+                                    class="form-check-input @error('clear_kaboom_api_key') is-invalid @enderror"
+                                    type="checkbox"
+                                    id="clear-kaboom-api-key"
+                                    name="clear_kaboom_api_key"
+                                    value="1"
+                                    @checked(old('clear_kaboom_api_key'))
+                                    @cannot('manage-settings') disabled @endcannot
+                                >
+                                <label class="form-check-label text-danger fw-semibold" for="clear-kaboom-api-key">
+                                    Удалить сохранённый X-API-Key Kaboom
+                                </label>
+                                @error('clear_kaboom_api_key')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
                         </div>
                     </section>
 

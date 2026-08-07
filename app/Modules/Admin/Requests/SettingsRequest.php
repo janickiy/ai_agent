@@ -124,6 +124,8 @@ final class SettingsRequest extends FormRequest
             'gemini_max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
             'gemini_verify_ssl' => ['accepted'],
             'clear_gemini_credentials' => ['boolean'],
+            'kaboom_api_key' => ['nullable', 'string', 'max:4096'],
+            'clear_kaboom_api_key' => ['boolean'],
         ];
     }
 
@@ -247,6 +249,7 @@ final class SettingsRequest extends FormRequest
             'clear_openai_credentials' => $this->boolean('clear_openai_credentials'),
             'gemini_verify_ssl' => $this->boolean('gemini_verify_ssl'),
             'clear_gemini_credentials' => $this->boolean('clear_gemini_credentials'),
+            'clear_kaboom_api_key' => $this->boolean('clear_kaboom_api_key'),
             'event_similarity_threshold' => str_replace(
                 ',',
                 '.',

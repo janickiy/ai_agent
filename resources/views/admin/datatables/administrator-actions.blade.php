@@ -1,4 +1,4 @@
-<div class="d-flex flex-nowrap align-items-center gap-2" role="group" aria-label="Действия с администратором {{ $administrator->name }}">
+<div class="d-flex flex-nowrap align-items-center gap-2" role="group" aria-label="Действия с администратором {{ $administrator->login }}">
     <a class="btn btn-sm btn-outline-primary rounded" href="{{ route('admin.administrators.edit', $administrator) }}" title="Редактировать">
         <i class="bi bi-pencil"></i><span class="visually-hidden">Редактировать</span>
     </a>

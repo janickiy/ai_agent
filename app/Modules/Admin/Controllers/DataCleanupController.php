@@ -59,7 +59,7 @@ final class DataCleanupController extends Controller
         return redirect()->route('admin.dashboard')->with(
             'status',
             sprintf(
-                'Данные очищены: исходных публикаций — %d, готовых постов — %d, записей журнала — %d.',
+                'Данные очищены: исходных публикаций — %d, опубликованных постов — %d, записей журнала — %d.',
                 $counts['source_items'],
                 $counts['posts'],
                 $counts['processing_logs'],

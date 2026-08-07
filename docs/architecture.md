@@ -27,7 +27,7 @@ Laravel Scheduler
 - `app/Modules/NewsMonitor/Services` — прикладной pipeline, сбор, извлечение, нормализация и безопасность.
 - `app/Modules/NewsMonitor/AI/Contracts` — независимый от поставщика контракт.
 - `app/Modules/NewsMonitor/AI/Providers` — правила и GigaChat.
-- `app/Modules/NewsMonitor/Models` — модели каталогов, кандидатов, анализа, дублей, журналов и готовых постов.
+- `app/Modules/NewsMonitor/Models` — модели каталогов, кандидатов, анализа, дублей, журналов и опубликованных постов.
 - `app/Modules/Admin` — контроллеры, Requests и административные сценарии.
 - `app/Jobs` — повторяемые фоновые задания.
 

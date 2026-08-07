@@ -7,7 +7,6 @@ namespace App\Modules\NewsMonitor\Services;
 use App\DTO\Pipeline\ItemAnalysisData;
 use App\DTO\Pipeline\ItemDuplicateData;
 use App\DTO\Pipeline\ProcessingLogData;
-use App\DTO\Pipeline\PublicationPostData;
 use App\DTO\Pipeline\SourceItemData;
 use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
 use App\Modules\NewsMonitor\AI\DTO\ArticleAnalysisRequest;
@@ -22,7 +21,6 @@ use App\Modules\NewsMonitor\Repositories\Pipeline\ProcessingLogRepository;
 use App\Modules\NewsMonitor\Repositories\Pipeline\PublicationPostRepository;
 use App\Modules\NewsMonitor\Repositories\Pipeline\SourceItemRepository;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -30,7 +28,7 @@ use Throwable;
  * Координирует полный конвейер обработки одного найденного новостного материала.
  *
  * Сервис загружает и извлекает статью, выполняет AI-анализ, проверяет актуальность
- * и дубли, формирует готовую публикацию и журналирует каждый этап обработки.
+ * и дубли, ставит внешнюю публикацию в очередь и журналирует каждый этап обработки.
  */
 final class NewsPipeline
 {
@@ -50,18 +48,23 @@ final class NewsPipeline
         private readonly ItemDuplicateRepository $itemDuplicates,
         private readonly PublicationPostRepository $publicationPosts,
         private readonly ProcessingLogRepository $processingLogs,
+        private readonly KaboomPublicationQueue $publicationQueue,
     ) {}
 
     /**
-     * Последовательно обрабатывает материал и возвращает готовую публикацию либо `null` при отклонении.
+     * Последовательно обрабатывает материал и возвращает существующую публикацию либо `null`.
      *
-     * Метод идемпотентен для уже опубликованного материала, обновляет состояния после каждого этапа,
-     * сохраняет решения анализа и дубликатов, а необработанные исключения журналирует и пробрасывает выше.
+     * Новый материал после проверок направляется в отдельную очередь Kaboom. Локальный пост
+     * появится позже, только после успешного ответа внешнего API. Ручной режим обходит лишь
+     * настройку автоматической публикации и не отключает проверки содержания.
      */
-    public function process(SourceItem $item): ?PublicationPost
+    public function process(SourceItem $item, bool $manualPublication = false): ?PublicationPost
     {
         if ($existing = $this->publicationPosts->findBySourceItemId((int) $item->getKey())) {
             return $existing;
+        }
+        if ($item->isQueuedForPublication()) {
+            return null;
         }
 
         $item = $this->sourceItems->withSource($item);
@@ -210,54 +213,46 @@ final class NewsPipeline
             }
             $this->log($item, $correlationId, 'deduplicate', 'success', $duplicateStarted);
 
-            if (! $this->settings->automaticPublication()) {
+            if (! $manualPublication && ! $this->settings->automaticPublication()) {
                 $item = $this->sourceItems->update($item, SourceItemData::fromArray([
                     'status' => 'analyzed',
-                    'rejection_reason' => 'publication_output_disabled',
+                    'rejection_reason' => SourceItem::MANUAL_PUBLICATION_REASON,
                 ]));
-                $this->log($item, $correlationId, 'decision', 'pending', hrtime(true), 'publication_output_disabled');
+                $this->log(
+                    $item,
+                    $correlationId,
+                    'decision',
+                    'pending',
+                    hrtime(true),
+                    SourceItem::MANUAL_PUBLICATION_REASON,
+                );
 
                 return null;
             }
 
-            $item = $this->sourceItems->withSource($item);
+            if ($manualPublication) {
+                $this->log($item, $correlationId, 'decision', 'success', hrtime(true), 'manual_publication');
+            }
+
             $publishStarted = hrtime(true);
-            $post = DB::transaction(function () use ($item, $category, $hashtags, $contentHash, $article): PublicationPost {
-                $post = $this->publicationPosts->firstOrCreateForSourceItem(new PublicationPostData(
-                    sourceItemId: (int) $item->getKey(),
-                    idempotencyKey: hash('sha256', $item->id.':'.$article->canonicalUrl.':'.$contentHash),
-                    sourceUrl: $article->canonicalUrl,
-                    sourceName: $item->source->name,
-                    sourcePublishedAt: $article->publishedAt,
-                    titleOriginal: $article->title,
-                    descriptionOriginal: $article->description,
-                    fullDescriptionOriginal: $article->body,
-                    imageUrl: $item->image_url,
-                    imageStorageKey: null,
-                    readMoreLabel: 'Читать в источнике',
-                    categoryId: (int) $category->getKey(),
-                    hashtags: $hashtags,
-                    contentHash: $contentHash,
-                    status: 'ready',
-                    validationMeta: [
-                        'title_hash' => hash('sha256', $article->title),
-                        'description_hash' => hash('sha256', $article->description),
-                        'rules_version' => 'post-validator-v1',
-                        'copied_fields_unchanged' => true,
-                    ],
-                    readyAt: now()->utc(),
-                ));
-                $this->sourceItems->update($item, SourceItemData::fromArray([
-                    'status' => 'accepted',
-                    'rejection_reason' => null,
-                ]));
+            if (! $this->publicationQueue->enqueue($item, $correlationId)) {
+                $item = $item->refresh();
+                $this->log(
+                    $item,
+                    $correlationId,
+                    'publish',
+                    'pending',
+                    $publishStarted,
+                    'publication_state_changed',
+                );
 
-                return $post;
-            }, attempts: 3);
-            $this->log($item, $correlationId, 'publish', 'success', $publishStarted, publicationPostId: $post->id);
-            $this->log($item, $correlationId, 'pipeline', 'success', $pipelineStarted, publicationPostId: $post->id);
+                return null;
+            }
+            $item = $item->refresh();
+            $this->log($item, $correlationId, 'publish', 'pending', $publishStarted, 'kaboom_queued');
+            $this->log($item, $correlationId, 'pipeline', 'pending', $pipelineStarted, 'kaboom_queued');
 
-            return $post;
+            return null;
         } catch (Throwable $exception) {
             $this->log(
                 $item,

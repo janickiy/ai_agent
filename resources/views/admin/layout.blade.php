@@ -129,7 +129,7 @@
             <ul class="navbar-nav ms-auto">
                 @can('purge-content')
                 <li class="nav-item d-flex align-items-center">
-                    <form method="post" action="{{ route('admin.data.destroy') }}" onsubmit="return confirm('Очистить все исходные публикации, готовые посты и журнал? Это действие нельзя отменить.')">
+                    <form method="post" action="{{ route('admin.data.destroy') }}" onsubmit="return confirm('Очистить все исходные публикации, опубликованные посты и журнал? Это действие нельзя отменить.')">
                         @csrf
                         @method('delete')
                         <button class="btn btn-outline-danger btn-sm mx-2" type="submit" title="Очистить все материалы и журнал">
@@ -139,7 +139,7 @@
                     </form>
                 </li>
                 @endcan
-                <li class="nav-item"><span class="nav-link">{{ auth()->user()->name }} · {{ auth()->user()->role }}</span></li>
+                <li class="nav-item"><span class="nav-link">{{ auth()->user()->login }} · {{ auth()->user()->role }}</span></li>
                 <li class="nav-item">
                     <form method="post" action="{{ route('logout') }}">@csrf<button class="btn btn-link nav-link" type="submit">Выйти</button></form>
                 </li>
@@ -155,7 +155,7 @@
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.categories.*')) active @endif" href="{{ route('admin.categories.index') }}"><i class="nav-icon bi bi-tags"></i><p>Тематики</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.sources.*')) active @endif" href="{{ route('admin.sources.index') }}"><i class="nav-icon bi bi-rss"></i><p>Источники</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.items.*')) active @endif" href="{{ route('admin.items.index') }}"><i class="nav-icon bi bi-newspaper"></i><p>Материалы</p></a></li>
-                    <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.posts.*')) active @endif" href="{{ route('admin.posts.index') }}"><i class="nav-icon bi bi-send-check"></i><p>Готовые посты</p></a></li>
+                    <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.posts.*')) active @endif" href="{{ route('admin.posts.index') }}"><i class="nav-icon bi bi-send-check"></i><p>Опубликованные посты</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.logs.*')) active @endif" href="{{ route('admin.logs.index') }}"><i class="nav-icon bi bi-journal-text"></i><p>Журнал и ошибки</p></a></li>
                     <li class="nav-item"><a class="nav-link @if(request()->routeIs('admin.settings.*')) active @endif" href="{{ route('admin.settings.edit') }}"><i class="nav-icon bi bi-sliders"></i><p>Настройки</p></a></li>
                     @can('manage-administrators')

@@ -15,7 +15,7 @@
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="bi bi-person-gear me-2 text-primary" aria-hidden="true"></i>
-                    {{ $administrator->name }}
+                    {{ $administrator->login }}
                 </h3>
             </div>
             <div class="card-body">

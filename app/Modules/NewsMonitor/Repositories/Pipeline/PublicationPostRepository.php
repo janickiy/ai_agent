@@ -9,10 +9,10 @@ use App\Modules\NewsMonitor\Models\PublicationPost;
 use App\Repositories\BaseRepository;
 
 /**
- * Управляет публикациями, подготовленными из принятых новостных материалов.
+ * Управляет публикациями, подтверждёнными внешним API Kaboom.
  *
- * Репозиторий инкапсулирует поиск и идемпотентное создание поста, чтобы один
- * исходный материал не породил несколько готовых публикаций.
+ * Репозиторий инкапсулирует поиск и идемпотентное создание поста, чтобы повторная
+ * доставка одного UID не породила несколько локальных публикаций.
  *
  * @extends BaseRepository<PublicationPost, PublicationPostData>
  */
@@ -24,33 +24,57 @@ final class PublicationPostRepository extends BaseRepository
     }
 
     /**
-     * Находит готовую публикацию по идентификатору исходного материала.
+     * Находит подтверждённый Kaboom пост по идентификатору исходного материала.
      *
-     * Метод используется для проверки идемпотентности перед повторным формированием поста.
+     * Старые строки со статусом `ready` не считаются опубликованными и не блокируют
+     * их последующую фактическую отправку во внешний API.
      */
     public function findBySourceItemId(int $sourceItemId): ?PublicationPost
     {
         /** @var PublicationPost|null $post */
-        $post = $this->query()->where('source_item_id', $sourceItemId)->first();
+        $post = $this->query()
+            ->where('source_item_id', $sourceItemId)
+            ->where('status', 'exported')
+            ->first();
 
         return $post;
     }
 
     /**
-     * Возвращает существующую публикацию материала либо атомарно создаёт её из DTO.
+     * Находит уже опубликованный материал с тем же неизменённым содержимым.
      *
-     * Уникальность по исходному материалу предотвращает повторную публикацию новости.
+     * Проверка выполняется внутри распределённой блокировки перед HTTP-запросом,
+     * чтобы параллельные задания не отправили один текст под разными URL.
+     */
+    public function findByContentHash(string $contentHash): ?PublicationPost
+    {
+        /** @var PublicationPost|null $post */
+        $post = $this->query()
+            ->where('content_hash', $contentHash)
+            ->where('status', 'exported')
+            ->first();
+
+        return $post;
+    }
+
+    /**
+     * Создаёт успешную публикацию либо переводит старую подготовленную строку в `exported`.
+     *
+     * Обновление legacy-строки выполняется только после ответа Kaboom 200/201, поэтому
+     * она станет видна в административном разделе лишь после реальной доставки.
      */
     public function firstOrCreateForSourceItem(PublicationPostData $dto): PublicationPost
     {
-        $attributes = $dto->toArray();
-        unset($attributes['source_item_id']);
+        $existing = $this->query()->where('source_item_id', $dto->sourceItemId)->first();
+        if ($existing !== null) {
+            /** @var PublicationPost $post */
+            $post = $this->update($existing, $dto);
+
+            return $post;
+        }
 
         /** @var PublicationPost $post */
-        $post = $this->query()->firstOrCreate(
-            ['source_item_id' => $dto->sourceItemId],
-            $attributes,
-        );
+        $post = $this->create($dto);
 
         return $post;
     }

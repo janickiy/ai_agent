@@ -45,9 +45,6 @@ final class SourceItemRepository extends BaseRepository
      *
      * Дополнительная проверка не допускает сохранение материала без источника,
      * канонического URL, его хеша и времени обнаружения.
-     *
-     * @param DataTransferObject $dto
-     * @return SourceItem
      */
     public function create(DataTransferObject $dto): SourceItem
     {
@@ -65,10 +62,6 @@ final class SourceItemRepository extends BaseRepository
      * Обновляет исходный материал через типобезопасную операцию базового репозитория.
      *
      * Конкретный тип результата сохранён в сигнатуре для удобства сервисов конвейера.
-     *
-     * @param Model $model
-     * @param DataTransferObject $dto
-     * @return SourceItem
      */
     public function update(Model $model, DataTransferObject $dto): SourceItem
     {
@@ -82,15 +75,12 @@ final class SourceItemRepository extends BaseRepository
      * Находит материал по хешу канонического URL либо создаёт его из данных обнаружения.
      *
      * Метод делает повторный обход одной ленты идемпотентным и не создаёт дубликаты URL.
-     *
-     * @param SourceItemData $dto
-     * @return SourceItem
      */
     public function firstOrCreateByCanonicalHash(SourceItemData $dto): SourceItem
     {
         $dto->requireFields(self::CREATE_FIELDS);
         $attributes = $dto->toArray();
-        $canonicalHash = (string)$attributes['canonical_url_hash'];
+        $canonicalHash = (string) $attributes['canonical_url_hash'];
         unset($attributes['canonical_url_hash']);
 
         /** @var SourceItem $item */
@@ -106,9 +96,6 @@ final class SourceItemRepository extends BaseRepository
      * Загружает материал вместе с источником для выполнения фонового задания обработки.
      *
      * Возвращение `null` позволяет заданию безопасно завершиться, если запись была удалена.
-     *
-     * @param int|string $id
-     * @return SourceItem|null
      */
     public function findForProcessing(int|string $id): ?SourceItem
     {
@@ -119,11 +106,138 @@ final class SourceItemRepository extends BaseRepository
     }
 
     /**
+     * Загружает материал со всеми связями, необходимыми для формирования запроса Kaboom.
+     *
+     * Источник даёт название публикации, а результат анализа — категорию и хэштеги.
+     */
+    public function findForPublication(int|string $id): ?SourceItem
+    {
+        /** @var SourceItem|null $item */
+        $item = $this->query()
+            ->with(['source', 'analysis.category'])
+            ->find($id);
+
+        return $item;
+    }
+
+    /**
+     * Помечает проанализированный материал как успешно поставленный в очередь Kaboom.
+     *
+     * Условное обновление выполняется перед отправкой задания в брокер и не меняет
+     * материал, который другой процесс уже успел перевести в следующий статус.
+     */
+    public function markPublicationQueued(SourceItem $item): ?SourceItem
+    {
+        $this->assertModel($item);
+        $attributes = SourceItemData::fromArray([
+            'status' => 'accepted',
+            'rejection_reason' => SourceItem::PUBLICATION_QUEUED_REASON,
+        ])->toArray();
+
+        $updated = $this->query()
+            ->whereKey($item->getKey())
+            ->where('status', 'analyzed')
+            ->update($attributes);
+
+        return $updated === 1 ? $item->refresh() : null;
+    }
+
+    /**
+     * Возвращает материал в исходное состояние, если брокер не принял задание Kaboom.
+     *
+     * Сравнение с состоянием очереди не позволяет откату стереть результат задания,
+     * которое могло успеть завершиться параллельно с ошибкой ответа Redis.
+     */
+    public function restoreAfterPublicationDispatchFailure(
+        SourceItem $item,
+        string $previousStatus,
+        ?string $previousReason,
+    ): SourceItem {
+        $this->assertModel($item);
+        $attributes = SourceItemData::fromArray([
+            'status' => $previousStatus,
+            'rejection_reason' => $previousReason,
+        ])->toArray();
+
+        $this->query()
+            ->whereKey($item->getKey())
+            ->where('status', 'accepted')
+            ->where('rejection_reason', SourceItem::PUBLICATION_QUEUED_REASON)
+            ->update($attributes);
+
+        return $item->refresh();
+    }
+
+    /**
+     * Помечает окончательную ошибку доставки только у материала, всё ещё ожидающего Kaboom.
+     *
+     * Условие защищает успешно опубликованный или отклонённый параллельным процессом
+     * материал от перезаписи запоздалым callback неуспешного задания.
+     */
+    public function markPublicationFailed(SourceItem $item): SourceItem
+    {
+        $this->assertModel($item);
+        $attributes = SourceItemData::fromArray([
+            'status' => 'analyzed',
+            'rejection_reason' => SourceItem::PUBLICATION_FAILED_REASON,
+        ])->toArray();
+
+        $this->query()
+            ->whereKey($item->getKey())
+            ->where('status', 'accepted')
+            ->where('rejection_reason', SourceItem::PUBLICATION_QUEUED_REASON)
+            ->update($attributes);
+
+        return $item->refresh();
+    }
+
+    /**
+     * Возвращает давно поставленные в Kaboom материалы без подтверждённой публикации.
+     *
+     * Выборка используется reconciliation-командой для восстановления заданий,
+     * потерянных при аварийном завершении процесса между БД и Redis.
+     *
+     * @return Collection<int, SourceItem>
+     */
+    public function queuedForPublicationRecovery(
+        CarbonInterface $before,
+        int $limit = 100,
+    ): Collection {
+        return $this->query()
+            ->where('status', 'accepted')
+            ->where('rejection_reason', SourceItem::PUBLICATION_QUEUED_REASON)
+            ->where('updated_at', '<=', $before)
+            ->whereDoesntHave(
+                'publicationPost',
+                static fn (Builder $query) => $query->where('status', 'exported'),
+            )
+            ->orderBy('updated_at')
+            ->limit(max(1, $limit))
+            ->get();
+    }
+
+    /**
+     * Возвращает выбранные материалы, которые прошли проверки и ожидают ручной публикации.
+     *
+     * Фильтрация на уровне запроса защищает массовую операцию от публикации отклонённых,
+     * уже принятых или подставленных пользователем идентификаторов.
+     *
+     * @param  list<int>  $ids
+     * @return Collection<int, SourceItem>
+     */
+    public function findManyAwaitingManualPublication(array $ids): Collection
+    {
+        return $this->query()
+            ->whereKey($ids)
+            ->where('status', 'analyzed')
+            ->where('rejection_reason', SourceItem::MANUAL_PUBLICATION_REASON)
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * Гарантирует загрузку связи материала с источником без повторного запроса,
      * если отношение уже было загружено вызывающим кодом.
-     *
-     * @param SourceItem $item
-     * @return SourceItem
      */
     public function withSource(SourceItem $item): SourceItem
     {
@@ -136,10 +250,6 @@ final class SourceItemRepository extends BaseRepository
      * Ищет другой материал с тем же хешем канонического URL, исключая текущую запись.
      *
      * Метод выявляет URL-дубликаты при повторной нормализации уже сохранённого материала.
-     *
-     * @param int|string $excludedId
-     * @param string $hash
-     * @return SourceItem|null
      */
     public function findOtherByCanonicalUrlHash(int|string $excludedId, string $hash): ?SourceItem
     {
@@ -157,18 +267,12 @@ final class SourceItemRepository extends BaseRepository
      *
      * Текущий материал исключается, а поиск ограничивается уже принятыми или отмеченными
      * дубликатами записями для надёжного определения оригинала.
-     *
-     * @param int|string $excludedId
-     * @param string $titleDescriptionHash
-     * @param string $contentHash
-     * @return SourceItem|null
      */
     public function findExactDuplicate(
         int|string $excludedId,
-        string     $titleDescriptionHash,
-        string     $contentHash,
-    ): ?SourceItem
-    {
+        string $titleDescriptionHash,
+        string $contentHash,
+    ): ?SourceItem {
         /** @var SourceItem|null $item */
         $item = $this->query()
             ->whereKeyNot($excludedId)
@@ -186,26 +290,18 @@ final class SourceItemRepository extends BaseRepository
     /**
      * Возвращает ограниченный набор принятых материалов той же категории и периода
      * для более дорогого семантического сравнения через AI-провайдер.
-     *
-     * @param int|string $excludedId
-     * @param int $categoryId
-     * @param CarbonInterface $from
-     * @param CarbonInterface $to
-     * @param int $limit
-     * @return Collection
      */
     public function semanticDuplicateCandidates(
-        int|string      $excludedId,
-        int             $categoryId,
+        int|string $excludedId,
+        int $categoryId,
         CarbonInterface $from,
         CarbonInterface $to,
-        int             $limit = 20,
-    ): Collection
-    {
+        int $limit = 20,
+    ): Collection {
         return $this->query()
             ->whereKeyNot($excludedId)
             ->where('status', 'accepted')
-            ->whereHas('analysis', static fn(Builder $query) => $query->where('category_id', $categoryId))
+            ->whereHas('analysis', static fn (Builder $query) => $query->where('category_id', $categoryId))
             ->whereBetween('source_published_at', [$from, $to])
             ->latest('source_published_at')
             ->limit(max(1, $limit))

@@ -1,0 +1,2 @@
+# Однократный выпуск сертификата после появления корректной A-записи.
+7 * * * * root /usr/local/sbin/issue-news-awi-one-certificate >> /var/log/letsencrypt-issue-news.awi.one.log 2>&1

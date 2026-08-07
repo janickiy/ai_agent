@@ -16,6 +16,7 @@ use App\Modules\NewsMonitor\Models\AuditLog;
 use App\Modules\NewsMonitor\Models\SystemSetting;
 use App\Modules\NewsMonitor\Services\AgentSettings;
 use App\Modules\NewsMonitor\Services\AISettings;
+use App\Modules\NewsMonitor\Services\KaboomSettings;
 use App\Modules\NewsMonitor\Support\NewsTables;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -48,8 +49,99 @@ final class SettingsManagementTest extends TestCase
             ->assertSee('Подключение YandexGPT')
             ->assertSee('Подключение OpenAI')
             ->assertSee('Подключение Google Gemini')
+            ->assertSee('Публикация на Kaboom')
+            ->assertSee(KaboomSettings::ENDPOINT)
+            ->assertSee('X-API-Key')
             ->assertSee('Автоматическое создание публикаций')
             ->assertSee('Сохранить');
+    }
+
+    public function test_administrator_can_store_encrypted_kaboom_api_key_without_exposing_it(): void
+    {
+        $administrator = $this->administrator();
+        $apiKey = 'plain-kaboom-api-key-for-test';
+
+        $this->actingAs($administrator)
+            ->put('/admin/settings', $this->payload([
+                'gigachat_auth_key' => 'valid-gigachat-key',
+                'kaboom_api_key' => $apiKey,
+            ]))
+            ->assertRedirect(route('admin.settings.edit'));
+
+        $setting = SystemSetting::query()->findOrFail('publishing.kaboom.credentials');
+        self::assertTrue($setting->is_secret);
+        self::assertArrayHasKey('api_key', $setting->value);
+        self::assertNotSame($apiKey, $setting->value['api_key']);
+        self::assertStringNotContainsString(
+            $apiKey,
+            $this->rawSettingValue('publishing.kaboom.credentials'),
+        );
+        self::assertSame(KaboomSettings::ENDPOINT, app(KaboomSettings::class)->endpoint());
+        self::assertSame($apiKey, app(KaboomSettings::class)->apiKey());
+
+        $auditJson = AuditLog::query()->where('action', 'settings.updated')->firstOrFail()->toJson();
+        self::assertStringNotContainsString($apiKey, $auditJson);
+
+        $this->actingAs($administrator)
+            ->get('/admin/settings')
+            ->assertOk()
+            ->assertSee(KaboomSettings::ENDPOINT)
+            ->assertSee('Сохранён')
+            ->assertDontSee($apiKey);
+    }
+
+    public function test_empty_kaboom_key_keeps_existing_value_and_clear_checkbox_deletes_it(): void
+    {
+        $administrator = $this->administrator();
+
+        $this->actingAs($administrator)
+            ->put('/admin/settings', $this->payload([
+                'gigachat_auth_key' => 'valid-gigachat-key',
+                'kaboom_api_key' => 'existing-kaboom-api-key',
+            ]))
+            ->assertRedirect();
+
+        $this->actingAs($administrator)
+            ->put('/admin/settings', $this->payload())
+            ->assertRedirect();
+
+        self::assertSame('existing-kaboom-api-key', app(KaboomSettings::class)->apiKey());
+
+        $this->actingAs($administrator)
+            ->put('/admin/settings', $this->payload([
+                'clear_kaboom_api_key' => '1',
+                'kaboom_api_key' => 'must-not-be-stored',
+            ]))
+            ->assertRedirect();
+
+        self::assertNull(SystemSetting::query()->find('publishing.kaboom.credentials'));
+        self::assertSame('', app(KaboomSettings::class)->apiKey());
+    }
+
+    public function test_corrupted_kaboom_api_key_is_reported_without_being_rendered(): void
+    {
+        $administrator = $this->administrator();
+        $this->actingAs($administrator)
+            ->put('/admin/settings', $this->payload([
+                'gigachat_auth_key' => 'valid-gigachat-key',
+                'kaboom_api_key' => 'kaboom-key-before-corruption',
+            ]))
+            ->assertRedirect();
+        DB::table(NewsTables::name('settings'))
+            ->where('key', 'publishing.kaboom.credentials')
+            ->update(['value' => json_encode([
+                'api_key' => 'not-a-valid-encrypted-kaboom-key',
+            ], JSON_THROW_ON_ERROR)]);
+
+        $this->actingAs($administrator)
+            ->get('/admin/settings')
+            ->assertOk()
+            ->assertSee('Не удалось расшифровать сохранённый API-ключ Kaboom')
+            ->assertDontSee('not-a-valid-encrypted-kaboom-key');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Не удалось расшифровать API-ключ Kaboom');
+        app(KaboomSettings::class)->apiKey();
     }
 
     public function test_administrator_can_store_all_provider_settings_and_encrypted_credentials(): void
@@ -507,6 +599,7 @@ final class SettingsManagementTest extends TestCase
             'yandexgpt_iam_token' => 'must-not-be-flashed-yandex-iam-token',
             'openai_api_key' => 'must-not-be-flashed-openai-api-key',
             'gemini_api_key' => 'must-not-be-flashed-gemini-api-key',
+            'kaboom_api_key' => 'must-not-be-flashed-kaboom-api-key',
         ];
 
         $response = $this->actingAs($administrator)

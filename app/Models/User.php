@@ -10,7 +10,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'is_active', 'admin_access'])]
+/**
+ * Представляет учётную запись пользователя административной панели.
+ *
+ * Таблица `users` хранит уникальный логин, хеш пароля, роль, состояние активности
+ * и признак доступа к административному интерфейсу.
+ */
+#[Fillable(['login', 'password', 'role', 'is_active', 'admin_access'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -18,25 +24,30 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * Get the attributes that should be cast.
+     * Преобразует пароль при записи и системные флаги при чтении модели.
      *
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'admin_access' => 'boolean',
         ];
     }
 
+    /**
+     * Определяет, обладает ли учётная запись ролью администратора.
+     */
     public function isAdministrator(): bool
     {
         return $this->role === 'administrator';
     }
 
+    /**
+     * Определяет, может ли пользователь выполнять операторские действия с контентом.
+     */
     public function canOperate(): bool
     {
         return in_array($this->role, ['administrator', 'operator'], true);

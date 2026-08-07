@@ -4,21 +4,14 @@
     @csrf
     @if($editing) @method('PUT') @endif
 
-    <div class="col-md-6">
-        <label class="form-label fw-semibold" for="administrator-name">Имя <span class="text-danger">*</span></label>
+    <div class="col-12">
+        <label class="form-label fw-semibold" for="administrator-login">Логин <span class="text-danger">*</span></label>
         <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-person" aria-hidden="true"></i></span>
-            <input class="form-control @error('name') is-invalid @enderror" id="administrator-name" name="name" value="{{ old('name', $administrator->name ?? '') }}" maxlength="255" required autofocus>
-            @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            <span class="input-group-text"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+            <input class="form-control @error('login') is-invalid @enderror" type="text" id="administrator-login" name="login" value="{{ old('login', $administrator->login ?? '') }}" minlength="3" maxlength="64" autocomplete="username" required autofocus>
+            @error('login')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-    </div>
-    <div class="col-md-6">
-        <label class="form-label fw-semibold" for="administrator-email">Email для входа <span class="text-danger">*</span></label>
-        <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-envelope" aria-hidden="true"></i></span>
-            <input class="form-control @error('email') is-invalid @enderror" type="email" id="administrator-email" name="email" value="{{ old('email', $administrator->email ?? '') }}" maxlength="255" required>
-            @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        </div>
+        <div class="form-text">От 3 до 64 символов: буквы, цифры, точки, дефисы и символы подчёркивания.</div>
     </div>
     <div class="col-md-6">
         <label class="form-label fw-semibold" for="administrator-password">Пароль @unless($editing)<span class="text-danger">*</span>@endunless</label>

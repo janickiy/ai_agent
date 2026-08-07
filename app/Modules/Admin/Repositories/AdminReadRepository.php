@@ -63,6 +63,7 @@ final readonly class AdminReadRepository
 
         return $this->publicationPosts->newQuery()
             ->leftJoin("{$categories} as category_table", 'category_table.id', '=', "{$posts}.category_id")
+            ->where("{$posts}.status", 'exported')
             ->select([
                 "{$posts}.*",
                 'category_table.name as category_name',
@@ -135,7 +136,8 @@ final readonly class AdminReadRepository
                 ->whereIn('status', ['discovered', 'fetched', 'extracted', 'analyzed'])
                 ->count(),
             'published_today' => $this->publicationPosts->newQuery()
-                ->where('ready_at', '>=', $today)
+                ->where('status', 'exported')
+                ->where('exported_at', '>=', $today)
                 ->count(),
             'rejected_today' => $this->sourceItems->newQuery()
                 ->where('updated_at', '>=', $today)
@@ -170,7 +172,7 @@ final readonly class AdminReadRepository
             'analysis' => $this->sourceItems->newQuery()->where('status', 'extracted')->count(),
             'deduplication' => $this->sourceItems->newQuery()->where('status', 'analyzed')->count(),
             'publication' => $this->publicationPosts->newQuery()
-                ->whereIn('status', ['ready', 'reserved'])
+                ->where('status', 'exported')
                 ->count(),
         ];
     }

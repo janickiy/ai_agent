@@ -15,7 +15,11 @@ final class AdminAccessTest extends TestCase
 
     public function test_guest_is_redirected_and_viewer_cannot_mutate_sources(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Вход в административную панель');
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('Вход в административную панель')
+            ->assertSee('name="login"', false)
+            ->assertDontSee('name="email"', false);
         $this->get('/admin')->assertRedirect('/login');
 
         $viewer = User::factory()->create([
@@ -42,7 +46,7 @@ final class AdminAccessTest extends TestCase
     public function test_active_administrator_can_login_and_logout(): void
     {
         $administrator = User::factory()->create([
-            'email' => 'admin-login@example.test',
+            'login' => 'admin-login',
             'password' => Hash::make('SecurePassword2026'),
             'role' => 'administrator',
             'is_active' => true,
@@ -50,7 +54,7 @@ final class AdminAccessTest extends TestCase
         ]);
 
         $this->post(route('login.store'), [
-            'email' => $administrator->email,
+            'login' => $administrator->login,
             'password' => 'SecurePassword2026',
         ])
             ->assertRedirect(route('admin.dashboard'));

@@ -6,12 +6,14 @@ namespace App\Modules\Admin\Controllers;
 
 use App\DTO\Settings\AgentSettingsData;
 use App\DTO\Settings\AISettingsData;
+use App\DTO\Settings\KaboomSettingsData;
 use App\Http\Controllers\Controller;
 use App\Modules\Admin\Requests\SettingsRequest;
 use App\Modules\NewsMonitor\Models\SystemSetting;
 use App\Modules\NewsMonitor\Services\AgentSettings;
 use App\Modules\NewsMonitor\Services\AISettings;
 use App\Modules\NewsMonitor\Services\AuditLogger;
+use App\Modules\NewsMonitor\Services\KaboomSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -19,22 +21,26 @@ use Illuminate\View\View;
 final class SettingsController extends Controller
 {
     /**
-     * Отображает единую форму настроек агента и подключений AI-провайдеров.
+     * Отображает единую форму настроек агента, AI-провайдеров и публикации в Kaboom.
      *
      * В представление передаются публичные значения, признаки сохранённых секретов
      * и полный список провайдеров без раскрытия конфиденциальных реквизитов.
      */
-    public function edit(AgentSettings $settings, AISettings $aiSettings): View
-    {
+    public function edit(
+        AgentSettings $settings,
+        AISettings $aiSettings,
+        KaboomSettings $kaboomSettings,
+    ): View {
         return view('admin.settings.edit', [
             'settings' => $settings->all(),
             'aiSettings' => $aiSettings->adminValues(),
             'aiProviderOptions' => AISettings::providerOptions(),
+            'kaboomSettings' => $kaboomSettings->adminValues(),
         ]);
     }
 
     /**
-     * Сохраняет общие настройки агента, параметры AI-провайдеров и изменения реквизитов доступа.
+     * Сохраняет настройки агента, параметры AI-провайдеров и реквизиты публикации в Kaboom.
      *
      * Метод преобразует валидированные данные в DTO, выполняет обновление транзакционно
      * и фиксирует безопасные снимки настроек в аудите без записи секретов открытым текстом.
@@ -45,11 +51,13 @@ final class SettingsController extends Controller
         SettingsRequest $request,
         AgentSettings $settings,
         AISettings $aiSettings,
+        KaboomSettings $kaboomSettings,
         AuditLogger $audit,
     ): RedirectResponse {
         $before = [
             'agent' => $settings->all(),
             'ai' => $aiSettings->auditSnapshot(),
+            'kaboom' => $kaboomSettings->auditSnapshot(),
         ];
         $validated = $request->validated();
         $agentData = AgentSettingsData::fromArray([
@@ -133,18 +141,25 @@ final class SettingsController extends Controller
             'provider_credentials' => $providerCredentials,
             'clear_credentials' => $clearCredentials,
         ]);
+        $kaboomData = KaboomSettingsData::fromArray([
+            'api_key' => $validated['kaboom_api_key'] ?? '',
+            'clear_api_key' => (bool) $validated['clear_kaboom_api_key'],
+        ]);
 
         DB::transaction(function () use (
             $request,
             $settings,
             $aiSettings,
+            $kaboomSettings,
             $audit,
             $before,
             $agentData,
             $aiData,
+            $kaboomData,
         ): void {
             $setting = $settings->update($agentData);
             $aiSettings->update($aiData);
+            $kaboomSettings->update($kaboomData);
 
             $audit->record(
                 $request->user()->id,
@@ -155,6 +170,7 @@ final class SettingsController extends Controller
                 [
                     'agent' => $settings->all(),
                     'ai' => $aiSettings->auditSnapshot(),
+                    'kaboom' => $kaboomSettings->auditSnapshot(),
                 ],
             );
         });

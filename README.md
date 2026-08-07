@@ -15,7 +15,7 @@
 - Идемпотентное транзакционное создание готового поста.
 - Логические пространства БД представлены префиксами таблиц `catalog_`, `collector_`, `analysis_`, `publishing_`, `system_`; SQLite использует те же имена в автотестах.
 - CRUD построен через репозитории; административные формы используют схему `FormRequest -> DTO -> Repository -> Eloquent`, а pipeline передаёт все операции создания и изменения через профильные DTO.
-- AdminLTE 4: вход, роли `administrator` / `operator` / `viewer`, Dashboard, источники, исходные материалы, причины отклонения, готовые посты и повторная постановка в очередь.
+- AdminLTE 4: вход, роли `administrator` / `operator` / `viewer`, Dashboard, источники, исходные материалы, причины отклонения, опубликованные посты и повторная постановка в очередь.
 - Docker-окружение с Nginx, PHP-FPM, MySQL, Redis и Supervisor.
 
 Все обязательные темы прописаны в [config/news.php](config/news.php) и при миграции/заполнении создаются в `catalog_news_categories`:

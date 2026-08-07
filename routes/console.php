@@ -8,3 +8,8 @@ Schedule::command('news:monitor')
     ->onOneServer();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes()->onOneServer();
+
+Schedule::command('news:recover-publications')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(10)
+    ->onOneServer();

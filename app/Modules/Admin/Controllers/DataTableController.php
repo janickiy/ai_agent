@@ -135,6 +135,7 @@ final class DataTableController extends Controller
         ]);
         $query = $this->adminReads->sourceItemsForDataTable($filters['status'] ?? null);
         $items = $query->getModel()->getTable();
+        $canPublish = Gate::allows('operate-pipeline');
 
         return DataTables::eloquent($query)
             ->filterColumn(
@@ -161,6 +162,10 @@ final class DataTableController extends Controller
                     compact('item'),
                 )->render(),
             )
+            ->addColumn(
+                'manual_publication_available',
+                static fn (SourceItem $item): bool => $canPublish && $item->isAwaitingManualPublication(),
+            )
             ->editColumn(
                 'created_at',
                 fn (SourceItem $item): string => $this->date($item->created_at),
@@ -174,7 +179,7 @@ final class DataTableController extends Controller
     }
 
     /**
-     * Возвращает JSON для таблицы готовых публикаций с серверным поиском,
+     * Возвращает JSON для таблицы опубликованных в Kaboom постов с серверным поиском,
      * форматированием дат и объединением хештегов в отображаемую строку.
      *
      * @throws Exception

@@ -1,0 +1,2 @@
+# Продление сертификата в 03:17 первого числа каждого второго месяца.
+17 3 1 */2 * root /usr/local/sbin/renew-news-awi-one-certificate >> /var/log/letsencrypt-renew-news.awi.one.log 2>&1

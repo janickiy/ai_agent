@@ -20,8 +20,8 @@ final class AdminDataTableTest extends TestCase
     public function test_all_admin_lists_support_server_side_search(): void
     {
         $this->seed();
-        $administrator = $this->administrator('current@example.test');
-        $secondAdministrator = $this->administrator('unique-admin@example.test');
+        $administrator = $this->administrator('current-admin');
+        $secondAdministrator = $this->administrator('unique-admin');
         $source = Source::query()->firstOrFail();
         $source->update(['is_active' => false]);
         $category = $source->categories()->firstOrFail();
@@ -37,6 +37,7 @@ final class AdminDataTableTest extends TestCase
         ]);
         $post = PublicationPost::query()->create([
             'source_item_id' => $item->id,
+            'uid' => $item->canonical_url,
             'idempotency_key' => 'datatable-post',
             'source_url' => $item->canonical_url,
             'source_name' => $source->name,
@@ -48,9 +49,10 @@ final class AdminDataTableTest extends TestCase
             'category_id' => $category->id,
             'hashtags' => ['#DataTables'],
             'content_hash' => hash('sha256', 'datatable-post'),
-            'status' => 'ready',
+            'status' => 'exported',
             'validation_meta' => [],
             'ready_at' => now()->utc(),
+            'exported_at' => now()->utc(),
         ]);
         ProcessingLog::query()->create([
             'correlation_id' => (string) Str::uuid(),
@@ -102,10 +104,10 @@ final class AdminDataTableTest extends TestCase
             ],
             'administrators' => [
                 'route' => 'admin.datatables.administrators',
-                'column' => ['data' => 'email', 'name' => 'email'],
-                'search' => $secondAdministrator->email,
-                'path' => 'data.0.email',
-                'expected' => $secondAdministrator->email,
+                'column' => ['data' => 'login', 'name' => 'login'],
+                'search' => $secondAdministrator->login,
+                'path' => 'data.0.login',
+                'expected' => $secondAdministrator->login,
             ],
         ];
 
@@ -140,7 +142,7 @@ final class AdminDataTableTest extends TestCase
     public function test_all_item_statuses_have_color_classes(): void
     {
         $this->seed();
-        $administrator = $this->administrator('statuses@example.test');
+        $administrator = $this->administrator('statuses-admin');
         $source = Source::query()->firstOrFail();
         $expected = [
             'discovered' => 'secondary',
@@ -187,7 +189,7 @@ final class AdminDataTableTest extends TestCase
     public function test_item_and_post_tables_show_database_timestamps(): void
     {
         $this->seed();
-        $administrator = $this->administrator('timestamps@example.test');
+        $administrator = $this->administrator('timestamps-admin');
         $source = Source::query()->firstOrFail();
         $category = $source->categories()->firstOrFail();
         $createdAt = now()->utc()->setDate(2026, 7, 20)->setTime(7, 15);
@@ -207,6 +209,7 @@ final class AdminDataTableTest extends TestCase
         ]);
         $post = PublicationPost::query()->create([
             'source_item_id' => $item->id,
+            'uid' => $item->canonical_url,
             'idempotency_key' => 'timestamp-post',
             'source_url' => $item->canonical_url,
             'source_name' => $source->name,
@@ -218,9 +221,10 @@ final class AdminDataTableTest extends TestCase
             'category_id' => $category->id,
             'hashtags' => [],
             'content_hash' => hash('sha256', 'timestamp-post'),
-            'status' => 'ready',
+            'status' => 'exported',
             'validation_meta' => [],
             'ready_at' => $updatedAt,
+            'exported_at' => $updatedAt,
             'created_at' => $createdAt,
             'updated_at' => $updatedAt,
         ]);
@@ -265,13 +269,13 @@ final class AdminDataTableTest extends TestCase
 
     public function test_datatable_pagination_and_sorting_are_applied_on_the_server(): void
     {
-        $this->administrator('middle@example.test');
-        $administrator = $this->administrator('alpha@example.test');
-        $this->administrator('zeta@example.test');
+        $this->administrator('middle-admin');
+        $administrator = $this->administrator('alpha-admin');
+        $this->administrator('zeta-admin');
 
         $response = $this->actingAs($administrator)
             ->getJson(route('admin.datatables.administrators', $this->dataTableQuery(
-                [['data' => 'email', 'name' => 'email']],
+                [['data' => 'login', 'name' => 'login']],
                 orderDirection: 'desc',
                 length: 2,
             )))
@@ -280,8 +284,8 @@ final class AdminDataTableTest extends TestCase
             ->assertJsonCount(2, 'data');
 
         self::assertSame(
-            ['zeta@example.test', 'middle@example.test'],
-            array_column($response->json('data'), 'email'),
+            ['zeta-admin', 'middle-admin'],
+            array_column($response->json('data'), 'login'),
         );
     }
 
@@ -313,10 +317,10 @@ final class AdminDataTableTest extends TestCase
         ];
     }
 
-    private function administrator(string $email): User
+    private function administrator(string $login): User
     {
         return User::factory()->create([
-            'email' => $email,
+            'login' => $login,
             'role' => 'administrator',
             'is_active' => true,
             'admin_access' => true,

@@ -60,6 +60,7 @@ final class DataCleanupTest extends TestCase
         ]);
         $post = PublicationPost::query()->create([
             'source_item_id' => $original->id,
+            'uid' => $original->canonical_url,
             'idempotency_key' => 'cleanup-post',
             'source_url' => $original->canonical_url,
             'source_name' => $source->name,
@@ -177,6 +178,7 @@ final class DataCleanupTest extends TestCase
         ]);
         $post = PublicationPost::query()->create([
             'source_item_id' => $original->id,
+            'uid' => $original->canonical_url,
             'idempotency_key' => 'repository-cleanup-post',
             'source_url' => $original->canonical_url,
             'source_name' => $source->name,

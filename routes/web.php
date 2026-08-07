@@ -48,6 +48,8 @@ Route::prefix('admin')
         Route::patch('/sources/{source}/toggle', [SourceController::class, 'toggle'])->name('sources.toggle');
         Route::delete('/sources/{source}', [SourceController::class, 'destroy'])->name('sources.destroy');
         Route::get('/items', [NewsItemController::class, 'index'])->name('items.index');
+        Route::post('/items/publish', [NewsItemController::class, 'publishMany'])->name('items.publish-many');
+        Route::post('/items/{item}/publish', [NewsItemController::class, 'publish'])->name('items.publish');
         Route::post('/items/{item}/retry', [NewsItemController::class, 'retry'])->name('items.retry');
         Route::get('/posts', [PublicationController::class, 'index'])->name('posts.index');
         Route::get('/logs', ProcessingLogController::class)->name('logs.index');

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\NewsMonitor\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 /**
- * Представляет таблицу `publishing_publication_posts` с подготовленными новостными постами.
+ * Представляет таблицу `publishing_publication_posts` с опубликованными новостными постами.
  *
  * Таблица хранит неизменённые заголовок, краткое и полное описания источника, ссылку
- * и имя источника, дату, изображение, категорию, хештеги, хеш содержимого, статус,
- * результаты валидации и время экспорта.
+ * и имя источника, UID внешней публикации, дату, изображение, категорию, хештеги,
+ * результат ответа Kaboom и время успешной публикации.
  */
 final class PublicationPost extends NewsModel
 {
@@ -17,6 +19,11 @@ final class PublicationPost extends NewsModel
 
     protected $guarded = [];
 
+    /**
+     * Преобразует JSON-поля и временные метки опубликованного поста в прикладные типы.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -26,5 +33,13 @@ final class PublicationPost extends NewsModel
             'ready_at' => 'datetime',
             'exported_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Возвращает категорию, название которой было отправлено вместе с публикацией в Kaboom.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(NewsCategory::class, 'category_id');
     }
 }

@@ -1,0 +1,20 @@
+[Unit]
+Description=Laravel Horizon for news.awi.one
+After=network.target mysql.service redis-server.service memcached.service
+Requires=mysql.service redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/html/news.awi.one/www
+ExecStart=/usr/bin/php8.4 artisan horizon
+ExecReload=/usr/bin/php8.4 artisan horizon:terminate
+ExecStop=/usr/bin/php8.4 artisan horizon:terminate
+Restart=always
+RestartSec=5
+TimeoutStopSec=3600
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

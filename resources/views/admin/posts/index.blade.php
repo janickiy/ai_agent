@@ -1,10 +1,10 @@
 @extends('admin.layout')
 
-@section('title', 'Готовые посты')
+@section('title', 'Опубликованные посты')
 
 @section('breadcrumbs')
     <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Панель управления</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Готовые посты</li>
+    <li class="breadcrumb-item active" aria-current="page">Опубликованные посты</li>
 @endsection
 
 @section('content')
@@ -14,10 +14,10 @@
         <div>
             <h3 class="card-title mb-1">
                 <i class="bi bi-send-check-fill me-2 text-primary" aria-hidden="true"></i>
-                Публикации, подготовленные ИИ-агентом
+                Публикации, отправленные в Kaboom
             </h3>
             <p class="mb-0 small text-body-secondary">
-                Проверенные материалы с описанием, рубрикой и набором хэштегов.
+                Только успешно принятые внешним API материалы с описанием, рубрикой и хэштегами.
             </p>
         </div>
     </div>

@@ -33,8 +33,7 @@
             <table class="table table-bordered table-hover align-middle administrator-table mb-0" id="administrators-table">
             <thead class="table-light">
                 <tr>
-                    <th>Email</th>
-                    <th>Имя</th>
+                    <th>Логин</th>
                     <th>Роль</th>
                     <th>Статус</th>
                     <th>Создан</th>
@@ -58,16 +57,15 @@
         font-weight: 600;
     }
     .administrators-card .administrator-table {
-        min-width: 960px;
+        min-width: 820px;
         table-layout: fixed;
     }
-    .administrators-card .administrator-table th:nth-child(1) { width: 24%; }
-    .administrators-card .administrator-table th:nth-child(2) { width: 22%; }
-    .administrators-card .administrator-table th:nth-child(3) { width: 15%; }
-    .administrators-card .administrator-table th:nth-child(4) { width: 14%; }
-    .administrators-card .administrator-table th:nth-child(5) { width: 16%; }
-    .administrators-card .administrator-table th:nth-child(6) { width: 9%; }
-    .administrator-email {
+    .administrators-card .administrator-table th:nth-child(1) { width: 32%; }
+    .administrators-card .administrator-table th:nth-child(2) { width: 20%; }
+    .administrators-card .administrator-table th:nth-child(3) { width: 16%; }
+    .administrators-card .administrator-table th:nth-child(4) { width: 20%; }
+    .administrators-card .administrator-table th:nth-child(5) { width: 12%; }
+    .administrator-login {
         overflow-wrap: anywhere;
     }
     .administrator-avatar {
@@ -101,21 +99,12 @@ document.addEventListener('DOMContentLoaded', function () {
         order: [[0, 'asc']],
         columns: [
             {
-                data: 'email',
-                name: 'email',
-                render: function (data, type) {
-                    return type === 'display'
-                        ? '<a class="administrator-email text-decoration-none" href="mailto:' + escape(data) + '"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' + escape(data) + '</a>'
-                        : data;
-                },
-            },
-            {
-                data: 'name',
-                name: 'name',
+                data: 'login',
+                name: 'login',
                 render: function (data, type, row) {
                     return type === 'display'
                         ? '<div class="d-flex align-items-center gap-2"><span class="administrator-avatar flex-shrink-0"><i class="bi bi-person-fill" aria-hidden="true"></i></span>'
-                            + '<div><div class="fw-semibold">' + escape(data) + '</div>'
+                            + '<div class="administrator-login"><div class="fw-semibold">' + escape(data) + '</div>'
                             + (Number(row.id) === Number(currentUserId) ? '<span class="badge rounded-pill text-bg-info">Текущая учётная запись</span>' : '')
                             + '</div></div>'
                         : data;

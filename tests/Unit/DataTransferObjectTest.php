@@ -16,8 +16,7 @@ final class DataTransferObjectTest extends TestCase
     public function test_administrator_data_omits_empty_password_and_forces_administrator_access(): void
     {
         $dto = AdministratorData::fromArray([
-            'name' => '  Главный администратор  ',
-            'email' => ' ADMIN@EXAMPLE.TEST ',
+            'login' => ' MAIN.ADMIN ',
             'password' => '   ',
             'is_active' => true,
             'role' => 'viewer',
@@ -25,8 +24,7 @@ final class DataTransferObjectTest extends TestCase
         ]);
 
         self::assertSame([
-            'name' => 'Главный администратор',
-            'email' => 'admin@example.test',
+            'login' => 'main.admin',
             'role' => 'administrator',
             'is_active' => true,
             'admin_access' => true,

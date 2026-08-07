@@ -27,12 +27,14 @@ final class AdministratorManagementTest extends TestCase
         $this->actingAs($administrator)
             ->get(route('admin.administrators.create'))
             ->assertOk()
-            ->assertSee('Добавление администратора');
+            ->assertSee('Добавление администратора')
+            ->assertSee('name="login"', false)
+            ->assertDontSee('name="email"', false)
+            ->assertDontSee('name="name"', false);
 
         $this->actingAs($administrator)
             ->post(route('admin.administrators.store'), [
-                'name' => 'Второй администратор',
-                'email' => 'SECOND.ADMIN@example.test',
+                'login' => 'SECOND.ADMIN',
                 'password' => 'SecureAdmin2026',
                 'password_confirmation' => 'SecureAdmin2026',
                 'is_active' => true,
@@ -40,7 +42,7 @@ final class AdministratorManagementTest extends TestCase
             ->assertRedirect(route('admin.administrators.index'))
             ->assertSessionHas('status', 'Администратор добавлен.');
 
-        $created = User::query()->where('email', 'second.admin@example.test')->firstOrFail();
+        $created = User::query()->where('login', 'second.admin')->firstOrFail();
         self::assertSame('administrator', $created->role);
         self::assertTrue($created->admin_access);
         self::assertTrue($created->is_active);
@@ -53,8 +55,7 @@ final class AdministratorManagementTest extends TestCase
 
         $this->actingAs($administrator)
             ->put(route('admin.administrators.update', $created), [
-                'name' => 'Редактор новостей',
-                'email' => 'editor@example.test',
+                'login' => 'news-editor',
                 'password' => '',
                 'password_confirmation' => '',
                 'is_active' => true,
@@ -62,8 +63,7 @@ final class AdministratorManagementTest extends TestCase
             ->assertRedirect(route('admin.administrators.index'));
 
         $created->refresh();
-        self::assertSame('Редактор новостей', $created->name);
-        self::assertSame('editor@example.test', $created->email);
+        self::assertSame('news-editor', $created->login);
         self::assertTrue(Hash::check('SecureAdmin2026', $created->password));
 
         $this->actingAs($administrator)
@@ -87,8 +87,7 @@ final class AdministratorManagementTest extends TestCase
         $this->actingAs($administrator)
             ->from(route('admin.administrators.edit', $administrator))
             ->put(route('admin.administrators.update', $administrator), [
-                'name' => $administrator->name,
-                'email' => $administrator->email,
+                'login' => $administrator->login,
                 'password' => '',
                 'password_confirmation' => '',
                 'is_active' => false,

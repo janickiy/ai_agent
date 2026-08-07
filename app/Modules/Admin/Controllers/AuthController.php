@@ -8,8 +8,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
+/**
+ * Управляет входом и выходом пользователей административной панели по логину и паролю.
+ */
 final class AuthController extends Controller
 {
     /**
@@ -27,17 +31,19 @@ final class AuthController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'login' => ['required', 'string', 'max:64'],
             'password' => ['required', 'string'],
         ]);
+        $credentials['login'] = Str::lower(trim($credentials['login']));
+
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()->withErrors(['email' => 'Неверный email или пароль.'])->onlyInput('email');
+            return back()->withErrors(['login' => 'Неверный логин или пароль.'])->onlyInput('login');
         }
         $request->session()->regenerate();
         if (! $request->user()?->is_active || ! $request->user()?->admin_access) {
             Auth::logout();
 
-            return back()->withErrors(['email' => 'Доступ к панели запрещён.']);
+            return back()->withErrors(['login' => 'Доступ к панели запрещён.']);
         }
 
         return redirect()->intended(route('admin.dashboard'));

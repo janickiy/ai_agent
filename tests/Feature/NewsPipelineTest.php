@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\DTO\Settings\AgentSettingsData;
+use App\Jobs\PublishKaboomPost;
 use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
 use App\Modules\NewsMonitor\AI\Providers\RuleBasedAIProvider;
 use App\Modules\NewsMonitor\Contracts\HttpFetcher;
@@ -15,6 +16,7 @@ use App\Modules\NewsMonitor\Models\SourceItem;
 use App\Modules\NewsMonitor\Services\AgentSettings;
 use App\Modules\NewsMonitor\Services\NewsPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Tests\TestCase;
 
@@ -22,7 +24,14 @@ final class NewsPipelineTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_creates_exactly_one_ready_post_and_is_idempotent(): void
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Queue::fake([PublishKaboomPost::class]);
+    }
+
+    public function test_it_queues_exactly_one_kaboom_publication_without_creating_a_post(): void
     {
         $this->seed();
         $item = $this->item('https://example.org/news/bridge');
@@ -38,18 +47,17 @@ final class NewsPipelineTest extends TestCase
         $first = $pipeline->process($item);
         $second = $pipeline->process($item->fresh());
 
-        self::assertNotNull($first);
-        self::assertSame($first->id, $second?->id);
-        self::assertSame(1, PublicationPost::query()->count());
-        self::assertSame('ready', $first->status);
-        self::assertSame('Читать в источнике', $first->read_more_label);
-        self::assertSame('В регионе завершено строительство нового моста', $first->title_original);
-        self::assertSame('Новый мост открыл движение по городской магистрали.', $first->description_original);
-        self::assertSame(
-            "Новый мост открыл движение по городской магистрали.\nПодрядчик завершил строительство объекта.",
-            $first->full_description_original,
-        );
+        self::assertNull($first);
+        self::assertNull($second);
+        self::assertSame(0, PublicationPost::query()->count());
         self::assertSame('accepted', $item->fresh()->status);
+        self::assertSame(SourceItem::PUBLICATION_QUEUED_REASON, $item->fresh()->rejection_reason);
+        Queue::assertPushed(
+            PublishKaboomPost::class,
+            static fn (PublishKaboomPost $job): bool => $job->sourceItemId === $item->id
+                && $job->queue === 'publishing',
+        );
+        Queue::assertPushed(PublishKaboomPost::class, 1);
     }
 
     public function test_same_content_at_another_url_is_rejected_as_duplicate(): void
@@ -65,12 +73,13 @@ final class NewsPipelineTest extends TestCase
         ]);
 
         $pipeline = app(NewsPipeline::class);
-        self::assertNotNull($pipeline->process($first));
+        self::assertNull($pipeline->process($first));
         self::assertNull($pipeline->process($second));
 
-        self::assertSame(1, PublicationPost::query()->count());
+        self::assertSame(0, PublicationPost::query()->count());
         self::assertSame('duplicate', $second->fresh()->status);
         self::assertSame('content_hash', $second->fresh()->rejection_reason);
+        Queue::assertPushed(PublishKaboomPost::class, 1);
     }
 
     public function test_advertising_and_missing_description_do_not_create_posts(): void
@@ -133,6 +142,36 @@ final class NewsPipelineTest extends TestCase
         self::assertSame('analyzed', $item->fresh()->status);
         self::assertSame('publication_output_disabled', $item->fresh()->rejection_reason);
         self::assertSame(0, PublicationPost::query()->count());
+        Queue::assertNotPushed(PublishKaboomPost::class);
+    }
+
+    public function test_manual_publication_bypasses_only_disabled_output_setting(): void
+    {
+        $this->seed();
+        app(AgentSettings::class)->update(AgentSettingsData::fromArray([
+            'automatic_publication' => false,
+            'max_news_age_hours' => 72,
+            'event_similarity_threshold' => 0.72,
+        ]));
+        $item = $this->item('https://example.org/news/manual-publication');
+        $this->fakeFetch([
+            $item->canonical_url => $this->html(
+                $item->canonical_url,
+                'В регионе вручную публикуют новость о новом мосте',
+                'Подрядчик завершил строительство транспортного объекта.',
+            ),
+        ]);
+
+        $post = app(NewsPipeline::class)->process($item, true);
+
+        self::assertNull($post);
+        self::assertSame('accepted', $item->fresh()->status);
+        self::assertSame(SourceItem::PUBLICATION_QUEUED_REASON, $item->fresh()->rejection_reason);
+        self::assertSame(0, PublicationPost::query()->count());
+        Queue::assertPushed(
+            PublishKaboomPost::class,
+            static fn (PublishKaboomPost $job): bool => $job->sourceItemId === $item->id,
+        );
     }
 
     private function item(string $url): SourceItem

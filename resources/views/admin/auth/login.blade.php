@@ -16,8 +16,8 @@
             @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
             <form method="post" action="{{ route('login.store') }}">
                 @csrf
-                <div class="mb-3"><label class="form-label">Email</label><input class="form-control" type="email" name="email" value="{{ old('email') }}" required autofocus></div>
-                <div class="mb-3"><label class="form-label">Пароль</label><input class="form-control" type="password" name="password" required></div>
+                <div class="mb-3"><label class="form-label" for="login">Логин</label><input class="form-control @error('login') is-invalid @enderror" id="login" type="text" name="login" value="{{ old('login') }}" maxlength="64" autocomplete="username" required autofocus></div>
+                <div class="mb-3"><label class="form-label" for="password">Пароль</label><input class="form-control" id="password" type="password" name="password" autocomplete="current-password" required></div>
                 <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="remember" value="1" id="remember"><label class="form-check-label" for="remember">Запомнить меня</label></div>
                 <button class="btn btn-primary w-100" type="submit">Войти</button>
             </form>

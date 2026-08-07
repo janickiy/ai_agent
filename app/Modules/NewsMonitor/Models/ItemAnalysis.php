@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\NewsMonitor\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 /**
  * Представляет таблицу `analysis_item_analyses` с результатами анализа исходных материалов.
  *
@@ -16,6 +18,11 @@ final class ItemAnalysis extends NewsModel
 
     protected $guarded = [];
 
+    /**
+     * Преобразует результаты и JSON-метаданные анализа в прикладные типы.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -28,5 +35,13 @@ final class ItemAnalysis extends NewsModel
             'decision_meta' => 'array',
             'checked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Возвращает категорию, название которой передаётся во внешнюю публикацию.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(NewsCategory::class, 'category_id');
     }
 }

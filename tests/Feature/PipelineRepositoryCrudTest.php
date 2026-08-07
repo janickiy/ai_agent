@@ -70,6 +70,7 @@ final class PipelineRepositoryCrudTest extends TestCase
         ));
         $post = app(PublicationPostRepository::class)->create(new PublicationPostData(
             sourceItemId: $original->id,
+            uid: $original->canonical_url,
             idempotencyKey: 'repository-crud-post',
             sourceUrl: $original->canonical_url,
             sourceName: $source->name,
@@ -83,9 +84,10 @@ final class PipelineRepositoryCrudTest extends TestCase
             categoryId: $category->id,
             hashtags: ['#Строительство'],
             contentHash: hash('sha256', 'repository-crud-post-content'),
-            status: 'ready',
+            status: 'exported',
             validationMeta: ['source' => 'repository_test'],
             readyAt: now()->utc(),
+            exportedAt: now()->utc(),
         ));
 
         self::assertSame($item->id, $analysis->source_item_id);

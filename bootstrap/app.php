@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'yandexgpt_iam_token',
             'openai_api_key',
             'gemini_api_key',
+            'kaboom_api_key',
         ]);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),

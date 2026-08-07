@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\NewsMonitor\Models\NewsCategory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -33,9 +34,8 @@ class DatabaseSeeder extends Seeder
         $password = trim((string) env('ADMIN_PASSWORD'));
         if ($password !== '') {
             User::query()->updateOrCreate(
-                ['email' => (string) env('ADMIN_EMAIL', 'admin@example.test')],
+                ['login' => Str::lower(trim((string) env('ADMIN_LOGIN', 'administrator')))],
                 [
-                    'name' => 'Administrator',
                     'password' => $password,
                     'role' => 'administrator',
                     'is_active' => true,

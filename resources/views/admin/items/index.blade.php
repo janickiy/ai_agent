@@ -32,6 +32,11 @@
         'validation_failed' => 'exclamation-triangle-fill',
         'accepted' => 'check-circle-fill',
     ];
+    $itemReasonLabels = [
+        'publication_output_disabled' => 'Ожидает ручной публикации',
+        'kaboom_publication_queued' => 'Ожидает отправки в Kaboom',
+        'kaboom_publication_failed' => 'Ошибка отправки в Kaboom',
+    ];
 @endphp
 
 <div class="card card-primary card-outline shadow-sm admin-table-card items-card">
@@ -74,6 +79,11 @@
         <table class="table table-bordered table-hover align-middle item-table mb-0" id="items-table">
             <thead class="table-light">
                 <tr>
+                    <th class="text-center">
+                        @can('operate-pipeline')
+                        <input class="form-check-input items-select-all" type="checkbox" aria-label="Отметить все материалы на странице">
+                        @endcan
+                    </th>
                     <th>ID</th>
                     <th>Дата публикации</th>
                     <th>Добавлено</th>
@@ -87,6 +97,23 @@
             </thead>
         </table>
     </div>
+    @can('operate-pipeline')
+    <div class="card-footer bg-body-tertiary">
+        <form class="d-flex flex-wrap align-items-center justify-content-between gap-3" id="items-publish-form" method="post" action="{{ route('admin.items.publish-many') }}">
+            @csrf
+            <div>
+                <div class="fw-semibold">Массовая ручная публикация</div>
+                <div class="small text-body-secondary" id="items-selection-summary">Материалы не выбраны.</div>
+            </div>
+            <div id="items-publish-inputs"></div>
+            <button class="btn btn-success" id="items-publish-button" type="submit" disabled>
+                <i class="bi bi-send-check me-1" aria-hidden="true"></i>
+                Опубликовать
+                <span class="badge text-bg-light ms-1" id="items-publish-count">0</span>
+            </button>
+        </form>
+    </div>
+    @endcan
 </div>
 @endsection
 
@@ -101,18 +128,19 @@
         font-weight: 600;
     }
     .items-card .item-table {
-        min-width: 1500px;
+        min-width: 1650px;
         table-layout: fixed;
     }
-    .items-card .item-table th:nth-child(1) { width: 5%; }
-    .items-card .item-table th:nth-child(2) { width: 11%; }
-    .items-card .item-table th:nth-child(3) { width: 11%; }
-    .items-card .item-table th:nth-child(4) { width: 11%; }
-    .items-card .item-table th:nth-child(5) { width: 10%; }
-    .items-card .item-table th:nth-child(6) { width: 24%; }
-    .items-card .item-table th:nth-child(7) { width: 11%; }
-    .items-card .item-table th:nth-child(8) { width: 12%; }
-    .items-card .item-table th:nth-child(9) { width: 5%; }
+    .items-card .item-table th:nth-child(1) { width: 3%; }
+    .items-card .item-table th:nth-child(2) { width: 4%; }
+    .items-card .item-table th:nth-child(3) { width: 9%; }
+    .items-card .item-table th:nth-child(4) { width: 9%; }
+    .items-card .item-table th:nth-child(5) { width: 9%; }
+    .items-card .item-table th:nth-child(6) { width: 9%; }
+    .items-card .item-table th:nth-child(7) { width: 23%; }
+    .items-card .item-table th:nth-child(8) { width: 10%; }
+    .items-card .item-table th:nth-child(9) { width: 12%; }
+    .items-card .item-table th:nth-child(10) { width: 12%; }
     .items-card table.dataTable > thead > tr > th {
         font-size: .9rem;
         padding-inline: .65rem;
@@ -160,6 +188,12 @@
         line-height: 1.25;
         overflow-wrap: anywhere;
     }
+    .item-actions {
+        min-width: 10rem;
+    }
+    .item-publish-checkbox {
+        cursor: pointer;
+    }
     .items-card .dt-scroll-body {
         border-bottom: 1px solid var(--bs-border-color);
     }
@@ -171,9 +205,17 @@
 document.addEventListener('DOMContentLoaded', function () {
     const escape = window.AdminDataTables.escapeHtml;
     const safeUrl = window.AdminDataTables.safeUrl;
+    const itemsCard = document.querySelector('.items-card');
     const status = document.getElementById('item-status');
+    const publishForm = document.getElementById('items-publish-form');
+    const publishButton = document.getElementById('items-publish-button');
+    const publishCount = document.getElementById('items-publish-count');
+    const publishInputs = document.getElementById('items-publish-inputs');
+    const selectionSummary = document.getElementById('items-selection-summary');
+    const selectedItemIds = new Set();
     const statusLabels = @js($itemStatusLabels);
     const statusIcons = @js($itemStatusIcons);
+    const reasonLabels = @js($itemReasonLabels);
 
     function renderDate(data, type, icon) {
         if (type !== 'display') {
@@ -192,9 +234,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 request.status = status.value;
             },
         },
-        order: [[1, 'desc']],
+        order: [[2, 'desc']],
         scrollX: true,
         columns: [
+            {
+                data: 'id',
+                name: 'selection',
+                orderable: false,
+                searchable: false,
+                render: function (data, type, row) {
+                    if (type !== 'display' || !row.manual_publication_available) {
+                        return '';
+                    }
+
+                    const id = String(data);
+                    const checked = selectedItemIds.has(id) ? ' checked' : '';
+
+                    return '<input class="form-check-input item-publish-checkbox" type="checkbox" value="'
+                        + escape(id) + '" aria-label="Выбрать материал #' + escape(id) + '"' + checked + '>';
+                },
+            },
             {
                 data: 'id',
                 name: @js($itemsTable.'.id'),
@@ -272,8 +331,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 render: function (data, type, row) {
                     const allowedColors = ['secondary', 'info', 'primary', 'warning', 'danger', 'dark', 'success'];
                     const color = allowedColors.includes(row.status_class) ? row.status_class : 'secondary';
+                    const reasonClass = row.rejection_reason === 'kaboom_publication_queued' ? 'text-info-emphasis' : 'text-danger';
                     const reason = row.rejection_reason
-                        ? '<div class="small text-danger item-status-reason mt-1">' + escape(row.rejection_reason) + '</div>'
+                        ? '<div class="small ' + reasonClass + ' item-status-reason mt-1">' + escape(reasonLabels[row.rejection_reason] || row.rejection_reason) + '</div>'
                         : '';
 
                     return type === 'display'
@@ -286,8 +346,114 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
     });
 
+    function currentPublishableIds() {
+        return table.rows({page: 'current'}).data().toArray()
+            .filter(function (row) {
+                return Boolean(row.manual_publication_available);
+            })
+            .map(function (row) {
+                return String(row.id);
+            });
+    }
+
+    function updateSelectionControls() {
+        const count = selectedItemIds.size;
+
+        if (publishButton) {
+            publishButton.disabled = count === 0;
+        }
+        if (publishCount) {
+            publishCount.textContent = String(count);
+        }
+        if (selectionSummary) {
+            selectionSummary.textContent = count === 0
+                ? 'Материалы не выбраны.'
+                : 'Выбрано материалов: ' + count + '.';
+        }
+
+        const selectAllCheckboxes = document.querySelectorAll('.items-select-all');
+
+        if (selectAllCheckboxes.length === 0) {
+            return;
+        }
+
+        const pageIds = currentPublishableIds();
+        const selectedOnPage = pageIds.filter(function (id) {
+            return selectedItemIds.has(id);
+        }).length;
+
+        selectAllCheckboxes.forEach(function (checkbox) {
+            checkbox.disabled = pageIds.length === 0;
+            checkbox.checked = pageIds.length > 0 && selectedOnPage === pageIds.length;
+            checkbox.indeterminate = selectedOnPage > 0 && selectedOnPage < pageIds.length;
+        });
+    }
+
+    itemsCard.addEventListener('change', function (event) {
+        const rowCheckbox = event.target.closest('.item-publish-checkbox');
+
+        if (rowCheckbox) {
+            if (rowCheckbox.checked) {
+                selectedItemIds.add(rowCheckbox.value);
+            } else {
+                selectedItemIds.delete(rowCheckbox.value);
+            }
+
+            updateSelectionControls();
+
+            return;
+        }
+
+        const selectAllCheckbox = event.target.closest('.items-select-all');
+
+        if (!selectAllCheckbox) {
+            return;
+        }
+
+        if (selectAllCheckbox.checked) {
+            currentPublishableIds().forEach(function (id) {
+                selectedItemIds.add(id);
+            });
+        } else {
+            selectedItemIds.clear();
+        }
+
+        document.querySelectorAll('.item-publish-checkbox').forEach(function (checkbox) {
+            checkbox.checked = selectedItemIds.has(checkbox.value);
+        });
+        updateSelectionControls();
+    });
+
+    table.on('draw', function () {
+        document.querySelectorAll('.item-publish-checkbox').forEach(function (checkbox) {
+            checkbox.checked = selectedItemIds.has(checkbox.value);
+        });
+        updateSelectionControls();
+    });
+
+    publishForm?.addEventListener('submit', function (event) {
+        publishInputs.replaceChildren();
+
+        if (selectedItemIds.size === 0) {
+            event.preventDefault();
+
+            return;
+        }
+
+        selectedItemIds.forEach(function (id) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'item_ids[]';
+            input.value = id;
+            publishInputs.appendChild(input);
+        });
+        publishButton.disabled = true;
+    });
+
     document.getElementById('items-filter').addEventListener('submit', function (event) {
         event.preventDefault();
+        selectedItemIds.clear();
+        updateSelectionControls();
         table.ajax.reload();
     });
 });
