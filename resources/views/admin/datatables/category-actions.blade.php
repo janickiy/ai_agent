@@ -3,7 +3,15 @@
     <a class="btn btn-sm btn-outline-primary rounded" href="{{ route('admin.categories.edit', $category) }}" title="Редактировать">
         <i class="bi bi-pencil"></i><span class="visually-hidden">Редактировать</span>
     </a>
-    <form class="m-0" method="post" action="{{ route('admin.categories.destroy', $category) }}" onsubmit="return confirm('Удалить тематику? Это действие нельзя отменить.')">
+    <form
+        class="m-0"
+        method="post"
+        action="{{ route('admin.categories.destroy', $category) }}"
+        data-confirm-dialog
+        data-confirm-title="Удалить тематику?"
+        data-confirm-text="Это действие нельзя отменить."
+        data-confirm-button="Удалить"
+    >
         @csrf
         @method('DELETE')
         <button class="btn btn-sm btn-outline-danger rounded" type="submit" title="Удалить">

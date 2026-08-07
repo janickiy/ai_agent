@@ -3,7 +3,15 @@
         <i class="bi bi-pencil"></i><span class="visually-hidden">Редактировать</span>
     </a>
     @unless(auth()->user()->is($administrator))
-    <form class="m-0" method="post" action="{{ route('admin.administrators.destroy', $administrator) }}" onsubmit="return confirm('Удалить администратора? Это действие нельзя отменить.')">
+    <form
+        class="m-0"
+        method="post"
+        action="{{ route('admin.administrators.destroy', $administrator) }}"
+        data-confirm-dialog
+        data-confirm-title="Удалить администратора?"
+        data-confirm-text="Это действие нельзя отменить."
+        data-confirm-button="Удалить"
+    >
         @csrf
         @method('DELETE')
         <button class="btn btn-sm btn-outline-danger rounded" type="submit" title="Удалить">

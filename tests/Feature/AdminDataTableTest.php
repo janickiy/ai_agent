@@ -129,6 +129,13 @@ final class AdminDataTableTest extends TestCase
                 $response->assertJsonPath('data.0.DT_RowClass', 'table-danger');
             }
 
+            if (in_array($name, ['categories', 'sources', 'administrators'], true)) {
+                $actions = (string) $response->json('data.0.actions');
+
+                self::assertStringContainsString('data-confirm-dialog', $actions, $name);
+                self::assertStringNotContainsString('confirm(', $actions, $name);
+            }
+
             if ($name === 'items') {
                 $response->assertJsonPath('data.0.status_class', 'success');
             }

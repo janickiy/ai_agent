@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.3.8/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="{{ asset('plugins/sweetalert2/sweetalert2.min.css') }}">
     @stack('styles')
     <style>
         .app-sidebar { --lte-sidebar-width: 260px; }
@@ -129,7 +130,14 @@
             <ul class="navbar-nav ms-auto">
                 @can('purge-content')
                 <li class="nav-item d-flex align-items-center">
-                    <form method="post" action="{{ route('admin.data.destroy') }}" onsubmit="return confirm('Очистить все исходные публикации, опубликованные посты и журнал? Это действие нельзя отменить.')">
+                    <form
+                        method="post"
+                        action="{{ route('admin.data.destroy') }}"
+                        data-confirm-dialog
+                        data-confirm-title="Очистить все данные?"
+                        data-confirm-text="Будут удалены все исходные публикации, опубликованные посты и журнал. Это действие нельзя отменить."
+                        data-confirm-button="Очистить всё"
+                    >
                         @csrf
                         @method('delete')
                         <button class="btn btn-outline-danger btn-sm mx-2" type="submit" title="Очистить все материалы и журнал">
@@ -197,6 +205,8 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/2.3.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="{{ asset('plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+<script src="{{ asset('js/admin-confirmations.js') }}"></script>
 <script src="{{ asset('js/admin-datatables.js') }}"></script>
 @stack('scripts')
 </body>

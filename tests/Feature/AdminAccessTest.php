@@ -66,4 +66,22 @@ final class AdminAccessTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function test_admin_layout_uses_sweetalert_for_destructive_confirmation(): void
+    {
+        $administrator = User::factory()->create([
+            'role' => 'administrator',
+            'is_active' => true,
+            'admin_access' => true,
+        ]);
+
+        $this->actingAs($administrator)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee(asset('plugins/sweetalert2/sweetalert2.min.css'), false)
+            ->assertSee(asset('plugins/sweetalert2/sweetalert2.min.js'), false)
+            ->assertSee(asset('js/admin-confirmations.js'), false)
+            ->assertSee('data-confirm-dialog', false)
+            ->assertDontSee('confirm(', false);
+    }
 }

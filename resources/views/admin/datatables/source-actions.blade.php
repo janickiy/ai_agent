@@ -11,7 +11,15 @@
             <span class="visually-hidden">{{ $source->is_active ? 'Отключить' : 'Включить' }}</span>
         </button>
     </form>
-    <form class="m-0" method="post" action="{{ route('admin.sources.destroy', $source) }}" onsubmit="return confirm('Удалить источник? Это действие нельзя отменить.')">
+    <form
+        class="m-0"
+        method="post"
+        action="{{ route('admin.sources.destroy', $source) }}"
+        data-confirm-dialog
+        data-confirm-title="Удалить источник?"
+        data-confirm-text="Это действие нельзя отменить."
+        data-confirm-button="Удалить"
+    >
         @csrf
         @method('DELETE')
         <button class="btn btn-sm btn-outline-danger rounded" type="submit" title="Удалить">
