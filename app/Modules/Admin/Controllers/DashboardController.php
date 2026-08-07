@@ -40,36 +40,42 @@ final class DashboardController extends Controller
                 'value' => $metricCounts['sources'],
                 'class' => 'info',
                 'icon' => 'bi-globe2',
+                'url' => route('admin.sources.index'),
             ],
             [
                 'label' => 'Найдено сегодня',
                 'value' => $metricCounts['discovered_today'],
                 'class' => 'primary',
                 'icon' => 'bi-search',
+                'url' => route('admin.items.index'),
             ],
             [
                 'label' => 'На проверке',
                 'value' => $metricCounts['pending_review'],
                 'class' => 'warning',
                 'icon' => 'bi-eye',
+                'url' => route('admin.items.index'),
             ],
             [
                 'label' => 'Опубликовано сегодня',
                 'value' => $metricCounts['published_today'],
                 'class' => 'success',
                 'icon' => 'bi-check-lg',
+                'url' => route('admin.posts.index'),
             ],
             [
                 'label' => 'Отклонено сегодня',
                 'value' => $metricCounts['rejected_today'],
                 'class' => 'secondary',
                 'icon' => 'bi-ban',
+                'url' => route('admin.items.index'),
             ],
             [
                 'label' => 'Ошибки',
                 'value' => $metricCounts['errors_today'],
                 'class' => 'danger',
                 'icon' => 'bi-exclamation-triangle-fill',
+                'url' => route('admin.logs.index'),
             ],
         ];
 

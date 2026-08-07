@@ -70,14 +70,26 @@ final class DashboardTest extends TestCase
             ->assertSee('Открытие нового транспортного объекта')
             ->assertSee($source->name)
             ->assertSee('Состояние агента')
-            ->assertSee('deduplication');
+            ->assertSee('deduplication')
+            ->assertSee('class="small-box dashboard-metric-link', false)
+            ->assertSee(route('admin.sources.index'), false)
+            ->assertSee(route('admin.items.index'), false)
+            ->assertSee(route('admin.posts.index'), false)
+            ->assertSee(route('admin.logs.index'), false);
 
         $response->assertViewHas('metrics', static function (array $metrics): bool {
             $values = collect($metrics)->pluck('value', 'label');
+            $urls = collect($metrics)->pluck('url', 'label');
 
             return $values['Найдено сегодня'] === 1
                 && $values['На проверке'] === 1
-                && $values['Ошибки'] === 1;
+                && $values['Ошибки'] === 1
+                && $urls['Источники'] === route('admin.sources.index')
+                && $urls['Найдено сегодня'] === route('admin.items.index')
+                && $urls['На проверке'] === route('admin.items.index')
+                && $urls['Опубликовано сегодня'] === route('admin.posts.index')
+                && $urls['Отклонено сегодня'] === route('admin.items.index')
+                && $urls['Ошибки'] === route('admin.logs.index');
         });
     }
 }

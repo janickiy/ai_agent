@@ -6,13 +6,17 @@
 <div class="row g-3 mb-4">
     @foreach($metrics as $metric)
     <div class="col-xl-2 col-md-4 col-sm-6">
-        <div class="small-box text-bg-{{ $metric['class'] }} mb-0 h-100">
+        <a class="small-box dashboard-metric-link text-bg-{{ $metric['class'] }} mb-0 h-100" href="{{ $metric['url'] }}">
             <div class="inner">
                 <h3>{{ $metric['value'] }}</h3>
                 <p class="fw-semibold">{{ $metric['label'] }}</p>
             </div>
-            <div class="small-box-icon"><i class="bi {{ $metric['icon'] }}"></i></div>
-        </div>
+            <div class="small-box-icon"><i class="bi {{ $metric['icon'] }}" aria-hidden="true"></i></div>
+            <span class="small-box-footer">
+                Перейти
+                <i class="bi bi-arrow-right-circle ms-1" aria-hidden="true"></i>
+            </span>
+        </a>
     </div>
     @endforeach
 </div>
@@ -76,3 +80,22 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .dashboard-metric-link {
+        cursor: pointer;
+        display: block;
+        text-decoration: none;
+        transition: box-shadow .2s ease, transform .2s ease;
+    }
+    .dashboard-metric-link:hover {
+        box-shadow: var(--bs-box-shadow);
+        transform: translateY(-2px);
+    }
+    .dashboard-metric-link:focus-visible {
+        outline: 3px solid rgba(13, 110, 253, .45);
+        outline-offset: 3px;
+    }
+</style>
+@endpush
