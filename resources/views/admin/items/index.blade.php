@@ -133,17 +133,34 @@
     }
     .items-card .item-table th:nth-child(1) { width: 3%; }
     .items-card .item-table th:nth-child(2) { width: 4%; }
-    .items-card .item-table th:nth-child(3) { width: 9%; }
+    .items-card .item-table th:nth-child(3) { width: 11%; }
     .items-card .item-table th:nth-child(4) { width: 9%; }
     .items-card .item-table th:nth-child(5) { width: 9%; }
     .items-card .item-table th:nth-child(6) { width: 9%; }
-    .items-card .item-table th:nth-child(7) { width: 23%; }
+    .items-card .item-table th:nth-child(7) { width: 21%; }
     .items-card .item-table th:nth-child(8) { width: 10%; }
     .items-card .item-table th:nth-child(9) { width: 12%; }
     .items-card .item-table th:nth-child(10) { width: 12%; }
     .items-card table.dataTable > thead > tr > th {
         font-size: .9rem;
-        padding-inline: .65rem;
+        padding: .85rem .75rem;
+        vertical-align: middle;
+    }
+    .items-card table.dataTable > thead > tr > th .dt-column-header {
+        align-items: center;
+        gap: .75rem;
+        min-height: 1.5rem;
+    }
+    .items-card table.dataTable > thead > tr > th .dt-column-order {
+        flex: 0 0 .8rem;
+    }
+    .items-card table.dataTable > thead > tr > th:nth-child(2) .dt-column-header {
+        flex-direction: row;
+    }
+    .items-card table.dataTable > thead > tr > th:nth-child(2),
+    .items-card table.dataTable > tbody > tr > td:nth-child(2),
+    .items-card table.dataTable > thead > tr > th:nth-child(10) {
+        text-align: center;
     }
     .items-card table.dataTable > tbody > tr > td {
         padding-inline: .65rem;
