@@ -34,4 +34,47 @@ final class ContentNormalizerTest extends TestCase
             $normalizer->body("  Первый   абзац.\r\n\r\n\r\n Второй абзац.  "),
         );
     }
+
+    /**
+     * Проверяет удаление точных повторов абзацев без изменения уникального текста.
+     */
+    public function test_body_removes_repeated_content_blocks(): void
+    {
+        $normalizer = new ContentNormalizer;
+
+        self::assertSame(
+            "Первый содержательный абзац новости.\n\nВторой уникальный абзац новости.",
+            $normalizer->body(
+                "Первый содержательный абзац новости.\n\n"
+                ."Второй уникальный абзац новости.\n\n"
+                .'  Первый содержательный абзац новости.  ',
+            ),
+        );
+    }
+
+    /**
+     * Проверяет исключение лида из полного текста, когда тот уже передаётся
+     * отдельным кратким описанием, и защиту от получения пустого результата.
+     */
+    public function test_publication_body_removes_only_a_leading_short_description(): void
+    {
+        $normalizer = new ContentNormalizer;
+        $short = 'Краткое описание важной строительной новости.';
+
+        self::assertSame(
+            'Основной текст с подробностями проекта.',
+            $normalizer->publicationBody(
+                $short."\n\nОсновной текст с подробностями проекта.\n\nОсновной текст с подробностями проекта.",
+                $short,
+            ),
+        );
+        self::assertSame($short, $normalizer->publicationBody($short, $short));
+        self::assertSame(
+            'Вводный текст отличается. Краткое описание важной строительной новости.',
+            $normalizer->publicationBody(
+                'Вводный текст отличается. Краткое описание важной строительной новости.',
+                $short,
+            ),
+        );
+    }
 }

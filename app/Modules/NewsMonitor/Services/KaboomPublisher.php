@@ -45,6 +45,7 @@ final readonly class KaboomPublisher
         private PublicationPostRepository $publicationPosts,
         private ProcessingLogRepository $processingLogs,
         private ItemDuplicateRepository $itemDuplicates,
+        private ContentNormalizer $contentNormalizer,
     ) {}
 
     /**
@@ -284,8 +285,11 @@ final readonly class KaboomPublisher
         $category = $analysis?->category;
         $uid = (string) $item->canonical_url;
         $title = (string) $item->title_original;
-        $fullDescription = (string) $item->body_text;
         $shortDescription = (string) $item->description_original;
+        $fullDescription = $this->contentNormalizer->publicationBody(
+            (string) $item->body_text,
+            $shortDescription,
+        );
 
         if (trim($uid) === '' || mb_strlen($uid) > 512) {
             throw new KaboomPublicationException('UID публикации пуст или превышает 512 символов.', false);

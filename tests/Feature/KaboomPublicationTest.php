@@ -110,6 +110,48 @@ final class KaboomPublicationTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    /**
+     * Проверяет, что Kaboom и локальная опубликованная копия не получают повтор
+     * краткого описания в начале полного текста и повторяющийся абзац.
+     */
+    public function test_publication_removes_duplicated_content_before_sending(): void
+    {
+        $item = $this->publicationItem('content-with-duplicates');
+        $short = 'Краткое описание новости.';
+        $item->forceFill([
+            'description_original' => $short,
+            'body_text' => $short."\n\n"
+                ."Основной абзац новости со всеми подробностями.\n\n"
+                .'Основной абзац новости со всеми подробностями.',
+        ])->save();
+        Http::fake([
+            KaboomSettings::ENDPOINT => Http::response([
+                'id' => 704,
+                'uid' => $item->canonical_url,
+                'created' => true,
+                'message' => 'Новость создана',
+            ], 201),
+        ]);
+
+        $post = app(KaboomPublisher::class)->publish((int) $item->getKey());
+
+        self::assertSame(
+            'Основной абзац новости со всеми подробностями.',
+            $post->full_description_original,
+        );
+        Http::assertSent(function (Request $request): bool {
+            $fields = [];
+            foreach ($request->data() as $part) {
+                if (is_array($part) && isset($part['name'], $part['contents'])) {
+                    $fields[(string) $part['name']] = (string) $part['contents'];
+                }
+            }
+
+            return ($fields['short_description'] ?? null) === 'Краткое описание новости.'
+                && ($fields['full_description'] ?? null) === 'Основной абзац новости со всеми подробностями.';
+        });
+    }
+
     public function test_temporary_api_error_does_not_create_local_publication(): void
     {
         $item = $this->publicationItem();
