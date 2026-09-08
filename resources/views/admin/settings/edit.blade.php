@@ -434,15 +434,16 @@
                                     </div>
                                     <input
                                         class="form-control @error('kaboom_api_key') is-invalid @enderror"
-                                        type="password"
+                                        type="text"
                                         id="kaboom-api-key"
                                         name="kaboom_api_key"
-                                        autocomplete="new-password"
-                                        placeholder="Введите новое значение"
+                                        value="{{ $kaboomSettings['api_key'] }}"
+                                        autocomplete="off"
+                                        placeholder="Введите X-API-Key"
                                         @cannot('manage-settings') disabled @endcannot
                                     >
                                     @error('kaboom_api_key')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                    <div class="form-text">Оставьте поле пустым, чтобы сохранить текущий ключ.</div>
+                                    <div class="form-text">Ключ хранится в базе данных в зашифрованном виде.</div>
                                 </div>
                             </div>
 

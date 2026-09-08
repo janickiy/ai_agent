@@ -81,21 +81,28 @@ final class KaboomSettings
     }
 
     /**
-     * Формирует безопасные данные для формы настроек без передачи API-ключа в HTML.
+     * Формирует данные подключения для административной формы.
      *
-     * @return array{endpoint: string, api_key_configured: bool, decryption_error: bool}
+     * Расшифрованный API-ключ включается только для администратора с правом изменения
+     * настроек. В режиме просмотра метод возвращает пустое значение секрета.
+     *
+     * @return array{endpoint: string, api_key: string, api_key_configured: bool, decryption_error: bool}
      */
-    public function adminValues(): array
+    public function adminValues(bool $includeApiKey = false): array
     {
         try {
+            $apiKey = $this->apiKey();
+
             return [
                 'endpoint' => self::ENDPOINT,
-                'api_key_configured' => $this->apiKey() !== '',
+                'api_key' => $includeApiKey ? $apiKey : '',
+                'api_key_configured' => $apiKey !== '',
                 'decryption_error' => false,
             ];
         } catch (RuntimeException) {
             return [
                 'endpoint' => self::ENDPOINT,
+                'api_key' => '',
                 'api_key_configured' => false,
                 'decryption_error' => true,
             ];
@@ -105,7 +112,7 @@ final class KaboomSettings
     /**
      * Создаёт безопасный снимок настроек Kaboom для журнала аудита.
      *
-     * @return array{endpoint: string, api_key_configured: bool, decryption_error: bool}
+     * @return array{endpoint: string, api_key: string, api_key_configured: bool, decryption_error: bool}
      */
     public function auditSnapshot(): array
     {

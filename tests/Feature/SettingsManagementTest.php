@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\DTO\Settings\AISettingsData;
+use App\DTO\Settings\KaboomSettingsData;
 use App\Models\User;
 use App\Modules\NewsMonitor\AI\Contracts\AIProvider;
 use App\Modules\NewsMonitor\AI\Providers\GeminiProvider;
@@ -56,7 +57,7 @@ final class SettingsManagementTest extends TestCase
             ->assertSee('Сохранить');
     }
 
-    public function test_administrator_can_store_encrypted_kaboom_api_key_without_exposing_it(): void
+    public function test_administrator_can_store_encrypted_kaboom_api_key_and_see_it_in_text_field(): void
     {
         $administrator = $this->administrator();
         $apiKey = 'plain-kaboom-api-key-for-test';
@@ -87,7 +88,9 @@ final class SettingsManagementTest extends TestCase
             ->assertOk()
             ->assertSee(KaboomSettings::ENDPOINT)
             ->assertSee('Сохранён')
-            ->assertDontSee($apiKey);
+            ->assertSee('type="text"', false)
+            ->assertSee('id="kaboom-api-key"', false)
+            ->assertSee('value="'.$apiKey.'"', false);
     }
 
     public function test_empty_kaboom_key_keeps_existing_value_and_clear_checkbox_deletes_it(): void
@@ -661,6 +664,10 @@ final class SettingsManagementTest extends TestCase
         app(AISettings::class)->update($this->gigachatSettingsData([
             'auth_key' => 'viewer-must-not-see-this',
         ]));
+        app(KaboomSettings::class)->update(KaboomSettingsData::fromArray([
+            'api_key' => 'viewer-must-not-see-kaboom-key',
+            'clear_api_key' => false,
+        ]));
         $viewer = User::factory()->create([
             'role' => 'viewer',
             'is_active' => true,
@@ -673,6 +680,7 @@ final class SettingsManagementTest extends TestCase
             ->assertSee('Настройки агента')
             ->assertSee('Сохранён')
             ->assertDontSee('viewer-must-not-see-this')
+            ->assertDontSee('viewer-must-not-see-kaboom-key')
             ->assertDontSee('Сохранить');
 
         $this->actingAs($viewer)

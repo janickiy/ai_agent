@@ -15,6 +15,7 @@ use App\Modules\NewsMonitor\Services\AISettings;
 use App\Modules\NewsMonitor\Services\AuditLogger;
 use App\Modules\NewsMonitor\Services\KaboomSettings;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -24,9 +25,11 @@ final class SettingsController extends Controller
      * Отображает единую форму настроек агента, AI-провайдеров и публикации в Kaboom.
      *
      * В представление передаются публичные значения, признаки сохранённых секретов
-     * и полный список провайдеров без раскрытия конфиденциальных реквизитов.
+     * и полный список провайдеров. X-API-Key Kaboom раскрывается только пользователю,
+     * которому разрешено изменять настройки.
      */
     public function edit(
+        Request $request,
         AgentSettings $settings,
         AISettings $aiSettings,
         KaboomSettings $kaboomSettings,
@@ -35,7 +38,9 @@ final class SettingsController extends Controller
             'settings' => $settings->all(),
             'aiSettings' => $aiSettings->adminValues(),
             'aiProviderOptions' => AISettings::providerOptions(),
-            'kaboomSettings' => $kaboomSettings->adminValues(),
+            'kaboomSettings' => $kaboomSettings->adminValues(
+                $request->user()?->can('manage-settings') ?? false,
+            ),
         ]);
     }
 
