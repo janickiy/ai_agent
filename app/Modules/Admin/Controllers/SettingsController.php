@@ -25,8 +25,8 @@ final class SettingsController extends Controller
      * Отображает единую форму настроек агента, AI-провайдеров и публикации в Kaboom.
      *
      * В представление передаются публичные значения, признаки сохранённых секретов
-     * и полный список провайдеров. X-API-Key Kaboom раскрывается только пользователю,
-     * которому разрешено изменять настройки.
+     * и полный список провайдеров. Реквизиты AI и X-API-Key Kaboom раскрываются только
+     * пользователю, которому разрешено изменять настройки.
      */
     public function edit(
         Request $request,
@@ -36,7 +36,9 @@ final class SettingsController extends Controller
     ): View {
         return view('admin.settings.edit', [
             'settings' => $settings->all(),
-            'aiSettings' => $aiSettings->adminValues(),
+            'aiSettings' => $aiSettings->adminValues(
+                $request->user()?->can('manage-settings') ?? false,
+            ),
             'aiProviderOptions' => AISettings::providerOptions(),
             'kaboomSettings' => $kaboomSettings->adminValues(
                 $request->user()?->can('manage-settings') ?? false,

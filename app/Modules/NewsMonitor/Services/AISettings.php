@@ -18,7 +18,8 @@ use RuntimeException;
  * Управляет выбором AI-провайдера, его публичными настройками и секретными реквизитами.
  *
  * Сервис объединяет значения из БД с безопасными значениями по умолчанию, шифрует ключи,
- * формирует конфигурацию провайдеров и не допускает раскрытия секретов в админке и аудите.
+ * формирует конфигурацию провайдеров и раскрывает реквизиты только уполномоченной форме,
+ * не допуская их попадания в аудит.
  */
 final class AISettings
 {
@@ -136,13 +137,15 @@ final class AISettings
     }
 
     /**
-     * Подготавливает безопасные значения для формы администрирования.
+     * Подготавливает значения для формы администрирования.
      *
-     * Вместо самих секретов метод возвращает только признаки их наличия и ошибки расшифровки.
+     * По умолчанию метод возвращает только признаки наличия реквизитов. Расшифрованные
+     * значения добавляются исключительно по явному запросу контроллера для администратора,
+     * которому разрешено изменять настройки.
      *
      * @return array<string, mixed>
      */
-    public function adminValues(): array
+    public function adminValues(bool $includeCredentials = false): array
     {
         $public = $this->public();
 
@@ -150,19 +153,19 @@ final class AISettings
             'provider' => $public['provider'],
             'gigachat' => [
                 ...$public['gigachat'],
-                ...$this->credentialStatus('gigachat'),
+                ...$this->credentialAdminValues('gigachat', $includeCredentials),
             ],
             'yandexgpt' => [
                 ...$public['yandexgpt'],
-                ...$this->credentialStatus('yandexgpt'),
+                ...$this->credentialAdminValues('yandexgpt', $includeCredentials),
             ],
             'openai' => [
                 ...$public['openai'],
-                ...$this->credentialStatus('openai'),
+                ...$this->credentialAdminValues('openai', $includeCredentials),
             ],
             'gemini' => [
                 ...$public['gemini'],
-                ...$this->credentialStatus('gemini'),
+                ...$this->credentialAdminValues('gemini', $includeCredentials),
             ],
         ];
     }
@@ -364,19 +367,23 @@ final class AISettings
     }
 
     /**
-     * Возвращает признаки наличия реквизитов для интерфейса без передачи их значений.
+     * Возвращает признаки наличия реквизитов и при необходимости их расшифрованные значения.
      *
-     * Ошибка расшифровки преобразуется в отдельный статус, позволяющий заменить повреждённые данные.
+     * Ошибка расшифровки преобразуется в отдельный статус, позволяющий заменить повреждённые данные,
+     * а значения полей в этом случае остаются пустыми.
      *
-     * @return array<string, bool>
+     * @return array<string, bool|string>
      */
-    private function credentialStatus(string $provider): array
+    private function credentialAdminValues(string $provider, bool $includeCredentials): array
     {
         try {
             $credentials = $this->credentials($provider);
             $status = [];
             foreach ($credentials as $key => $value) {
                 $status["{$key}_configured"] = $value !== '';
+                if ($includeCredentials) {
+                    $status[$key] = $value;
+                }
             }
             $status['credentials_decryption_error'] = false;
 
@@ -385,6 +392,9 @@ final class AISettings
             $status = [];
             foreach (self::CREDENTIAL_FIELDS[$provider] as $key) {
                 $status["{$key}_configured"] = false;
+                if ($includeCredentials) {
+                    $status[$key] = '';
+                }
             }
             $status['credentials_decryption_error'] = true;
 

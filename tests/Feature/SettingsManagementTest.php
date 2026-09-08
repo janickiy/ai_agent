@@ -296,8 +296,14 @@ final class SettingsManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Сохранён');
         foreach ([$authKey, $clientId, $clientSecret, $yandexApiKey, $yandexIamToken, $openAiApiKey, $geminiApiKey] as $secret) {
-            $response->assertDontSee($secret);
+            $response->assertSee($secret);
         }
+        $response
+            ->assertSee('name="gigachat_auth_key"', false)
+            ->assertSee('name="yandexgpt_iam_token"', false)
+            ->assertSee('name="openai_api_key"', false)
+            ->assertSee('name="gemini_api_key"', false)
+            ->assertDontSee('type="password"', false);
 
         $settings = app(AgentSettings::class);
         self::assertTrue($settings->automaticPublication());

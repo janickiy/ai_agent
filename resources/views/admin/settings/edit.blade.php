@@ -143,9 +143,9 @@
                                         ['name' => 'gigachat_verify_ssl', 'key' => 'verify_ssl', 'label' => 'Проверять SSL-сертификат', 'help' => 'Обязательная защита учётных данных; отключение недоступно.', 'locked' => true],
                                     ],
                                     'credentials' => [
-                                        ['name' => 'gigachat_auth_key', 'state' => 'auth_key_configured', 'label' => 'Authorization Key'],
-                                        ['name' => 'gigachat_client_id', 'state' => 'client_id_configured', 'label' => 'Client ID'],
-                                        ['name' => 'gigachat_client_secret', 'state' => 'client_secret_configured', 'label' => 'Client Secret'],
+                                        ['name' => 'gigachat_auth_key', 'key' => 'auth_key', 'state' => 'auth_key_configured', 'label' => 'Authorization Key'],
+                                        ['name' => 'gigachat_client_id', 'key' => 'client_id', 'state' => 'client_id_configured', 'label' => 'Client ID'],
+                                        ['name' => 'gigachat_client_secret', 'key' => 'client_secret', 'state' => 'client_secret_configured', 'label' => 'Client Secret'],
                                     ],
                                     'clear_name' => 'clear_gigachat_secrets',
                                     'clear_label' => 'Удалить сохранённые секреты GigaChat',
@@ -166,8 +166,8 @@
                                         ['name' => 'yandexgpt_verify_ssl', 'key' => 'verify_ssl', 'label' => 'Проверять SSL-сертификат', 'help' => 'Обязательная защита учётных данных; отключение недоступно.', 'locked' => true],
                                     ],
                                     'credentials' => [
-                                        ['name' => 'yandexgpt_api_key', 'state' => 'api_key_configured', 'label' => 'API Key'],
-                                        ['name' => 'yandexgpt_iam_token', 'state' => 'iam_token_configured', 'label' => 'IAM-токен'],
+                                        ['name' => 'yandexgpt_api_key', 'key' => 'api_key', 'state' => 'api_key_configured', 'label' => 'API Key'],
+                                        ['name' => 'yandexgpt_iam_token', 'key' => 'iam_token', 'state' => 'iam_token_configured', 'label' => 'IAM-токен'],
                                     ],
                                     'clear_name' => 'clear_yandexgpt_credentials',
                                     'clear_label' => 'Удалить сохранённые учётные данные YandexGPT',
@@ -189,7 +189,7 @@
                                         ['name' => 'openai_verify_ssl', 'key' => 'verify_ssl', 'label' => 'Проверять SSL-сертификат', 'help' => 'Обязательная защита учётных данных; отключение недоступно.', 'locked' => true],
                                     ],
                                     'credentials' => [
-                                        ['name' => 'openai_api_key', 'state' => 'api_key_configured', 'label' => 'API Key'],
+                                        ['name' => 'openai_api_key', 'key' => 'api_key', 'state' => 'api_key_configured', 'label' => 'API Key'],
                                     ],
                                     'clear_name' => 'clear_openai_credentials',
                                     'clear_label' => 'Удалить сохранённый API Key OpenAI',
@@ -209,7 +209,7 @@
                                         ['name' => 'gemini_verify_ssl', 'key' => 'verify_ssl', 'label' => 'Проверять SSL-сертификат', 'help' => 'Обязательная защита учётных данных; отключение недоступно.', 'locked' => true],
                                     ],
                                     'credentials' => [
-                                        ['name' => 'gemini_api_key', 'state' => 'api_key_configured', 'label' => 'Gemini API Key'],
+                                        ['name' => 'gemini_api_key', 'key' => 'api_key', 'state' => 'api_key_configured', 'label' => 'Gemini API Key'],
                                     ],
                                     'clear_name' => 'clear_gemini_credentials',
                                     'clear_label' => 'Удалить сохранённый API Key Gemini',
@@ -279,7 +279,7 @@
                                             <h5 class="h6 fw-bold mb-1">Подключение {{ $tab['label'] }}</h5>
                                             <div class="small text-body-secondary">Параметры API и зашифрованные учётные данные хранятся в базе данных.</div>
                                         </div>
-                                        <span class="badge text-bg-light border text-body ms-sm-auto">Секреты повторно не отображаются</span>
+                                        <span class="badge text-bg-light border text-body ms-sm-auto">Реквизиты доступны администраторам</span>
                                     </div>
 
                                     @if (isset($tab['notice']))
@@ -349,7 +349,8 @@
                                     </div>
 
                                     <div class="alert alert-info py-2 small" role="note">
-                                        Оставьте поле пустым, чтобы сохранить текущее значение. Введённый секрет заменит сохранённое значение.
+                                        Реквизиты показаны открытым текстом только администраторам с правом изменения настроек.
+                                        В базе данных значения хранятся в зашифрованном виде.
                                     </div>
 
                                     @if ($aiSettings[$tabCode]['credentials_decryption_error'] ?? false)
@@ -373,11 +374,12 @@
                                                 </div>
                                                 <input
                                                     class="form-control @error($credential['name']) is-invalid @enderror"
-                                                    type="password"
+                                                    type="text"
                                                     id="{{ $credentialId }}"
                                                     name="{{ $credential['name'] }}"
-                                                    autocomplete="new-password"
-                                                    placeholder="Введите новое значение"
+                                                    value="{{ $aiSettings[$tabCode][$credential['key']] ?? '' }}"
+                                                    autocomplete="off"
+                                                    placeholder="Введите значение"
                                                     @cannot('manage-settings') disabled @endcannot
                                                 >
                                                 @error($credential['name'])<div class="invalid-feedback">{{ $message }}</div>@enderror
