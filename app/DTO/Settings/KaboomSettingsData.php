@@ -7,16 +7,17 @@ namespace App\DTO\Settings;
 use App\DTO\DataTransferObject;
 
 /**
- * Передаёт изменение секретного API-ключа интеграции Kaboom из формы в сервис настроек.
+ * Передаёт изменение endpoint и секретного API-ключа Kaboom из формы в сервис настроек.
  *
  * Пустой ключ означает сохранение текущего значения, а флаг очистки — его явное удаление.
  */
 final readonly class KaboomSettingsData extends DataTransferObject
 {
     /**
-     * Создаёт DTO с новым значением API-ключа и признаком его удаления.
+     * Создаёт DTO с адресом API, новым значением ключа и признаком его удаления.
      */
     public function __construct(
+        public string $endpoint,
         public string $apiKey,
         public bool $clearApiKey,
     ) {}
@@ -29,6 +30,7 @@ final readonly class KaboomSettingsData extends DataTransferObject
     public static function fromArray(array $data): self
     {
         return new self(
+            endpoint: trim((string) ($data['endpoint'] ?? '')),
             apiKey: trim((string) ($data['api_key'] ?? '')),
             clearApiKey: (bool) ($data['clear_api_key'] ?? false),
         );
@@ -42,6 +44,7 @@ final readonly class KaboomSettingsData extends DataTransferObject
     public function toArray(): array
     {
         return [
+            'endpoint' => $this->endpoint,
             'api_key' => $this->apiKey,
             'clear_api_key' => $this->clearApiKey,
         ];

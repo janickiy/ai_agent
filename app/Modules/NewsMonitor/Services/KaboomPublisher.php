@@ -45,6 +45,7 @@ final readonly class KaboomPublisher
         private PublicationPostRepository $publicationPosts,
         private ProcessingLogRepository $processingLogs,
         private ItemDuplicateRepository $itemDuplicates,
+        private KaboomSettings $kaboomSettings,
         private ContentNormalizer $contentNormalizer,
     ) {}
 
@@ -269,7 +270,7 @@ final readonly class KaboomPublisher
             started: hrtime(true),
             reason: SourceItem::PUBLICATION_FAILED_REASON,
             error: $exception->getMessage(),
-            context: ['kaboom' => ['endpoint' => KaboomSettings::ENDPOINT]],
+            context: ['kaboom' => ['endpoint' => $this->kaboomSettings->endpoint()]],
             correlationId: $correlationId,
         );
     }

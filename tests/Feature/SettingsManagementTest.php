@@ -93,6 +93,45 @@ final class SettingsManagementTest extends TestCase
             ->assertSee('value="'.$apiKey.'"', false);
     }
 
+    public function test_administrator_can_change_kaboom_endpoint(): void
+    {
+        $endpoint = 'https://stage.api.kaboom.pro/api/instroygram/news';
+
+        $this->actingAs($this->administrator())
+            ->put('/admin/settings', $this->payload([
+                'gigachat_auth_key' => 'valid-gigachat-key',
+                'kaboom_endpoint' => $endpoint,
+            ]))
+            ->assertRedirect(route('admin.settings.edit'));
+
+        self::assertSame($endpoint, app(KaboomSettings::class)->endpoint());
+        self::assertSame(
+            ['endpoint' => $endpoint],
+            SystemSetting::query()->findOrFail('publishing.kaboom')->value,
+        );
+
+        $this->actingAs($this->administrator())
+            ->get('/admin/settings')
+            ->assertOk()
+            ->assertSee('name="kaboom_endpoint"', false)
+            ->assertSee('value="'.$endpoint.'"', false)
+            ->assertDontSee('readonly', false);
+    }
+
+    public function test_kaboom_endpoint_rejects_non_kaboom_or_insecure_url(): void
+    {
+        foreach (['http://api.bath.kaboom.pro/news', 'https://example.org/news'] as $endpoint) {
+            $this->actingAs($this->administrator())
+                ->from('/admin/settings')
+                ->put('/admin/settings', $this->payload([
+                    'gigachat_auth_key' => 'valid-gigachat-key',
+                    'kaboom_endpoint' => $endpoint,
+                ]))
+                ->assertRedirect('/admin/settings')
+                ->assertSessionHasErrors('kaboom_endpoint');
+        }
+    }
+
     public function test_empty_kaboom_key_keeps_existing_value_and_clear_checkbox_deletes_it(): void
     {
         $administrator = $this->administrator();
@@ -731,6 +770,7 @@ final class SettingsManagementTest extends TestCase
             'gemini_connect_timeout' => 8,
             'gemini_max_attempts' => 5,
             'gemini_verify_ssl' => '1',
+            'kaboom_endpoint' => KaboomSettings::ENDPOINT,
         ], $overrides);
     }
 

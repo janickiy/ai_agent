@@ -124,6 +124,13 @@ final class SettingsRequest extends FormRequest
             'gemini_max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
             'gemini_verify_ssl' => ['accepted'],
             'clear_gemini_credentials' => ['boolean'],
+            'kaboom_endpoint' => [
+                'required',
+                'url',
+                'starts_with:https://',
+                'max:2048',
+                $this->kaboomEndpoint(),
+            ],
             'kaboom_api_key' => ['nullable', 'string', 'max:4096'],
             'clear_kaboom_api_key' => ['boolean'],
         ];
@@ -276,6 +283,34 @@ final class SettingsRequest extends FormRequest
 
             if ($actualHost !== $host || $actualPort !== $port || $hasUserInfo) {
                 $fail("Разрешён только официальный адрес {$host}:{$port}.");
+            }
+        };
+    }
+
+    /**
+     * Проверяет, что X-API-Key будет отправляться только на HTTPS-узел Kaboom
+     * без пользовательских реквизитов, фрагмента URL и нестандартного порта.
+     */
+    private function kaboomEndpoint(): Closure
+    {
+        return static function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_string($value)) {
+                return;
+            }
+
+            $parts = parse_url($value);
+            $host = is_array($parts) ? strtolower((string) ($parts['host'] ?? '')) : '';
+            $isKaboomHost = $host === 'kaboom.pro' || str_ends_with($host, '.kaboom.pro');
+            if (
+                ! is_array($parts)
+                || strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
+                || ! $isKaboomHost
+                || (int) ($parts['port'] ?? 443) !== 443
+                || isset($parts['user'])
+                || isset($parts['pass'])
+                || isset($parts['fragment'])
+            ) {
+                $fail('Endpoint Kaboom должен быть HTTPS-адресом домена kaboom.pro.');
             }
         };
     }

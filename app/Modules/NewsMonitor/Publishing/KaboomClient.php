@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Отправляет подготовленные новости в фиксированный API Инстройграма Kaboom.
+ * Отправляет подготовленные новости в настроенный API Инстройграма Kaboom.
  *
  * Клиент использует multipart/form-data, запрещает редиректы с секретным заголовком,
  * принимает только ответы 200/201 и классифицирует ошибки для повторов очереди.
@@ -38,6 +38,7 @@ final readonly class KaboomClient
     {
         try {
             $apiKey = $this->settings->apiKey();
+            $endpoint = $this->settings->endpoint();
         } catch (RuntimeException $exception) {
             throw new KaboomPublicationException($exception->getMessage(), false, $exception);
         }
@@ -55,7 +56,7 @@ final readonly class KaboomClient
                 ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
                 ->timeout(self::TIMEOUT_SECONDS)
                 ->withOptions(['allow_redirects' => false])
-                ->post(KaboomSettings::ENDPOINT, $publication->toArray());
+                ->post($endpoint, $publication->toArray());
         } catch (ConnectionException $exception) {
             throw new KaboomPublicationException(
                 'Не удалось подключиться к API Kaboom: '.$exception->getMessage(),

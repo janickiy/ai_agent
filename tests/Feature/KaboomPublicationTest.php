@@ -110,6 +110,32 @@ final class KaboomPublicationTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_publication_uses_endpoint_saved_in_settings(): void
+    {
+        $endpoint = 'https://stage.api.kaboom.pro/api/instroygram/news';
+        app(KaboomSettings::class)->update(KaboomSettingsData::fromArray([
+            'endpoint' => $endpoint,
+            'api_key' => '',
+            'clear_api_key' => false,
+        ]));
+        $item = $this->publicationItem('custom-endpoint');
+        Http::fake([
+            $endpoint => Http::response([
+                'id' => 705,
+                'uid' => $item->canonical_url,
+                'created' => true,
+                'message' => 'Новость создана',
+            ], 201),
+        ]);
+
+        app(KaboomPublisher::class)->publish((int) $item->getKey());
+
+        Http::assertSent(
+            static fn (Request $request): bool => $request->url() === $endpoint,
+        );
+        Http::assertSentCount(1);
+    }
+
     /**
      * Проверяет, что Kaboom и локальная опубликованная копия не получают повтор
      * краткого описания в начале полного текста и повторяющийся абзац.

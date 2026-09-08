@@ -147,6 +147,7 @@ final class SettingsController extends Controller
             'clear_credentials' => $clearCredentials,
         ]);
         $kaboomData = KaboomSettingsData::fromArray([
+            'endpoint' => $validated['kaboom_endpoint'],
             'api_key' => $validated['kaboom_api_key'] ?? '',
             'clear_api_key' => (bool) $validated['clear_kaboom_api_key'],
         ]);

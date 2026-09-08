@@ -414,13 +414,16 @@
                                 <div class="col-lg-7">
                                     <label class="form-label fw-semibold" for="kaboom-endpoint">Endpoint API</label>
                                     <input
-                                        class="form-control"
+                                        class="form-control @error('kaboom_endpoint') is-invalid @enderror"
                                         type="url"
                                         id="kaboom-endpoint"
-                                        value="{{ $kaboomSettings['endpoint'] }}"
-                                        readonly
+                                        name="kaboom_endpoint"
+                                        value="{{ old('kaboom_endpoint', $kaboomSettings['endpoint']) }}"
+                                        required
+                                        @cannot('manage-settings') disabled @endcannot
                                     >
-                                    <div class="form-text">Адрес зафиксирован в приложении и недоступен для изменения.</div>
+                                    @error('kaboom_endpoint')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <div class="form-text">Разрешены защищённые HTTPS-адреса домена kaboom.pro.</div>
                                 </div>
 
                                 <div class="col-lg-5">

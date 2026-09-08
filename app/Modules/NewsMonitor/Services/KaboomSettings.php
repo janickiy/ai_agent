@@ -14,14 +14,16 @@ use RuntimeException;
 /**
  * Управляет защищёнными реквизитами подключения к API публикации новостей Kaboom.
  *
- * Endpoint зафиксирован в коде, а API-ключ хранится в системных настройках только
- * в зашифрованном виде и раскрывается исключительно серверному API-клиенту.
+ * Endpoint хранится в общих системных настройках, а API-ключ — отдельно и только
+ * в зашифрованном виде. При отсутствии настройки используется штатный адрес API.
  */
 final class KaboomSettings
 {
     public const ENDPOINT = 'https://api.bath.kaboom.pro/api/instroygram/news';
 
-    private const KEY = 'publishing.kaboom.credentials';
+    private const SETTINGS_KEY = 'publishing.kaboom';
+
+    private const CREDENTIALS_KEY = 'publishing.kaboom.credentials';
 
     private ?string $apiKey = null;
 
@@ -33,11 +35,14 @@ final class KaboomSettings
     public function __construct(private readonly SystemSettingRepository $settings) {}
 
     /**
-     * Возвращает единый доверенный endpoint для отправки публикаций Kaboom.
+     * Возвращает сохранённый endpoint Kaboom либо штатный адрес по умолчанию.
      */
     public function endpoint(): string
     {
-        return self::ENDPOINT;
+        $stored = $this->settings->find(self::SETTINGS_KEY)?->value;
+        $endpoint = is_array($stored) ? trim((string) ($stored['endpoint'] ?? '')) : '';
+
+        return $endpoint === '' ? self::ENDPOINT : $endpoint;
     }
 
     /**
@@ -52,7 +57,7 @@ final class KaboomSettings
             return $this->apiKey ?? '';
         }
 
-        $stored = $this->settings->find(self::KEY)?->value;
+        $stored = $this->settings->find(self::CREDENTIALS_KEY)?->value;
         if ($stored === null) {
             $this->apiKeyLoaded = true;
 
@@ -94,14 +99,14 @@ final class KaboomSettings
             $apiKey = $this->apiKey();
 
             return [
-                'endpoint' => self::ENDPOINT,
+                'endpoint' => $this->endpoint(),
                 'api_key' => $includeApiKey ? $apiKey : '',
                 'api_key_configured' => $apiKey !== '',
                 'decryption_error' => false,
             ];
         } catch (RuntimeException) {
             return [
-                'endpoint' => self::ENDPOINT,
+                'endpoint' => $this->endpoint(),
                 'api_key' => '',
                 'api_key_configured' => false,
                 'decryption_error' => true,
@@ -120,13 +125,20 @@ final class KaboomSettings
     }
 
     /**
-     * Сохраняет новый API-ключ зашифрованным, оставляет прежний при пустом поле
-     * либо полностью удаляет секрет по явному флагу очистки.
+     * Сохраняет endpoint и новый API-ключ. Пустой ключ оставляет прежнее значение,
+     * а явный флаг очистки полностью удаляет сохранённый секрет.
      */
     public function update(KaboomSettingsData $data): void
     {
+        $endpoint = $data->endpoint === '' ? $this->endpoint() : $data->endpoint;
+        $this->settings->put(SystemSettingData::fromArray([
+            'key' => self::SETTINGS_KEY,
+            'value' => ['endpoint' => $endpoint],
+            'is_secret' => false,
+        ]));
+
         if ($data->clearApiKey) {
-            $setting = $this->settings->find(self::KEY);
+            $setting = $this->settings->find(self::CREDENTIALS_KEY);
             if ($setting !== null) {
                 $this->settings->delete($setting);
             }
@@ -141,7 +153,7 @@ final class KaboomSettings
         }
 
         $this->settings->put(SystemSettingData::fromArray([
-            'key' => self::KEY,
+            'key' => self::CREDENTIALS_KEY,
             'value' => ['api_key' => Crypt::encryptString($data->apiKey)],
             'is_secret' => true,
         ]));
